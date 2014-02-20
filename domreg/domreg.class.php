@@ -1,14 +1,7 @@
 <?php
 
 error_reporting( E_ERROR | E_WARNING | E_PARSE );
-ini_set( 'display_errors', 1 );
-
-function __domreg_log( $value ) {
-	echo "<pre>";
-	print_r( $value );
-	echo "</pre>";
-}
-
+ini_set( "display_errors", 1 );
 
 
 // --------------------------------------------------------------------------
@@ -42,21 +35,34 @@ class DomregRegistrantsDB {
 		");
 	}
 
-	public function find_registrant( $contact, $field = "client_id" ) {
+	public function available_index( $contact ) {
+		$field = null;
+		foreach ( array( "id", "client_id" ) as $i ) {
+			if ( isset( $contact[ $i ] ) ) {
+				$field = $i;
+				break;
+			}
+		}
+		return $field;
+	}
+
+	public function find_registrant( $contact ) {
 		$fields = "id,client_id,name,org,street,city,sp,pc,cc,voice,fax,email";
+		$field = $this->available_index( $contact );
 		$where = array( $field => $contact[ $field ] );
 		$query = select_query( $this->table, $fields, $where );
 		if ( ! $query ) return false;
-		return mysql_fetch_assoc( $query );
+		return array_filter( mysql_fetch_assoc( $query ) );
 	}
 
-	public function save_registrant( $contact, $field = "client_id" ) {
+	public function save_registrant( $contact ) {
+		$field = $this->available_index( $contact );
 		$result = $this->find_registrant( array( $field => $contact[ $field ] ) );
 		if ( ! $result ) return insert_query( $this->table, $contact );
 		foreach ( $contact as $key => $value ) {
 			if ( $value != $result[$key] and $key != "role" ) {
 				update_query( $this->table, $contact, array(
-					"client_id" => $contact["client_id"]
+					$field => $contact[ $field ]
 				));
 				return "updated";
 			}
@@ -101,16 +107,19 @@ class Domreg {
 	public $executor;
 	public $error = false;
 
+	public $log_to_console = false;
+	public $log_to_whmcs = true;
+
 	// ----- Construct -----
 	public function __construct( $params, $options = array() ) {
 		self::$instance = $this;
 		$this->params = $params;
 
 		if ( isset($params["TestMode"]) ) $this->is_testing = $params["TestMode"];
-		if ( isset($params["Username"]) ) $this->username = $params["Username"];
-		if ( isset($params["Password"]) ) $this->password = $params["Password"];
 		if ( isset($params["RegistrantsTable"]) ) $this->registrants_table = $params["RegistrantsTable"];
-		if ( isset($params["SupportContact"]) ) $this->default_support_contact = $params["SupportContact"];
+		$this->username = $params["Username"];
+		$this->password = $params["Password"];
+		$this->default_support_contact = $params["SupportContact"];
 
 		foreach ( $options as $opt => $value ) $this->{$opt} = $value;
 
@@ -139,7 +148,6 @@ class Domreg {
 		if ( ! $this->executor->EppLogin() ) {
 			$this->error = "EPP error: " . $this->executor->errorMsg;
 		}
-
 	}
 
 	// ----- Methods -----
@@ -158,12 +166,27 @@ class Domreg {
 		return true;
 	}
 
+	public function log( $action, $obj ) {
+		if ( $this->log_to_whmcs and function_exists("logModuleCall") ) {
+			logModuleCall( "domreg_class", $action, $this->params, $obj );
+		}
+		if ( $this->log_to_console ) {
+			echo "domreg: " . $action;
+			if ( $obj ) echo ": " . var_export( $obj, true );
+			echo "\n";
+		}
+	}
+
 
 
 	// Convert phone number to domreg format
-	public function convert_phone_number( $number ) {
+	public function convert_phone_number( $number, $cc = "lt" ) {
+		$number = preg_replace( "(\+370\.370)", "370", $number );
+		$number = preg_replace( "(\+370\.86)", "3706", $number );
 		// If number looks like local lithuanian, change it to int. format
-		if ( preg_match( "/8.{8}/", $number ) ) $number = "370" . substr( $number, -8 );
+		if ( preg_match( "/8.{8}/", $number ) ) {
+			$number = "370" . substr( $number, -8 );
+		}
 		// Int. number pattern
 		$pattern = "/(9[976]\d|8[987530]\d|6[987]\d|5[90]\d|42\d|3[875]\d" .
 			"|2[98654321]\d|9[8543210]|8[6421]|6[6543210]|5[87654321]" .
@@ -176,31 +199,67 @@ class Domreg {
 
 
 	// Extracts registrant info from params variable
-	public function extract_registrant( $params ) {
-		$registrant = array(
-			"client_id" => $params["id"],
-			"name" => trim( $params["firstname"] . " " . $params["lastname"] ),
-			"street" => trim( $params["address1"] . " " . $params["address2"] ),
-			"city" => $params["city"],
-			"cc" => strtolower( $params["country"] ),
-			"voice" => $this->convert_phone_number( $params["phonenumber"] ),
-			"email" => strtolower( $params["email"] ),
-			"role" => "registrant"
-		);
-		if ( $params["state"] ) $registrant["sp"] = $params["state"];
-		if ( $params["postcode"] ) $registrant["pc"] = $params["postcode"];
-		if ( $params["companyname"] ) $registrant["org"] = $params["companyname"];
+	public function params_to_registrant( $params, $registrant = array() ) {
+		// Static fields
+		$registrant["role"] = "registrant";
+
+		$this->log( "params_to_registrant", array(
+			"registrant" => $registrant,
+			"regdata" => $params
+		) );
+
+		// Default fields (when creating a contact)
+		if ( ! empty( $params["id"] ) )
+			$registrant["client_id"] = $params["id"];
+		if ( ! empty( $params["firstname"] ) or ! empty( $params["lastname"] ) )
+			$registrant["name"] = trim( $params["firstname"] . " " . $params["lastname"] );
+		if ( ! empty( $params["address1"] ) or ! empty( $params["address2"] ) )
+			$registrant["street"] = trim( $params["address1"] . " " . $params["address2"] );
+		if ( ! empty( $params["city"] ) )
+			$registrant["city"] = trim( $params["city"] );
+		if ( ! empty( $params["country"] ) )
+			$registrant["cc"] = strtolower( $params["country"] );
+		if ( ! empty( $params["phonenumber"] ) )
+			$registrant["voice"] = $this->convert_phone_number( $params["phonenumber"] );
+		if ( ! empty( $params["email"] ) )
+			$registrant["email"] = strtolower( $params["email"] );
+		if ( ! empty( $params["state"] ) )
+			$registrant["sp"] = trim( $params["state"] );
+		if ( ! empty( $params["postcode"] ) )
+			$registrant["pc"] = trim( $params["postcode"] );
+		if ( ! empty( $params["companyname"] ) )
+			$registrant["org"] = trim( $params["companyname"] );
+		
+		// Additional fields (when editing contact)
+		if ( ! empty( $params["Email"] ) )
+			$registrant["email"] = $params["Email"];
+		if ( ! empty( $params["Phone Number"] ) )
+			$registrant["voice"] = $this->convert_phone_number( $params["Phone Number"] );
+		if ( ! empty( $params["Street"] ) )
+			$registrant["street"] = trim( $params["Street"] );
+		if ( ! empty( $params["City"] ) )
+			$registrant["city"] = trim( $params["City"] );
+		if ( ! empty( $params["Region"] ) )
+			$registrant["sp"] = trim( $params["Region"] );
+		if ( ! empty( $params["Post code"] ) )
+			$registrant["pc"] = trim( $params["Post code"] );
+		if ( ! empty( $params["ZIP"] ) )
+			$registrant["pc"] = trim( $params["ZIP"] );
+		if ( ! empty( $params["Country code"] ) )
+			$registrant["cc"] = trim( $params["Country code"] );
+
 		return $registrant;
 	}
 
 
 
 	// Synchronizes registrant with local database and domreg
-	// Returns the most relevant registrant's data
-	public function sync_registrant() {
-
-		// Just assume registrant is the one in params variable
-		$registrant = $this->extract_registrant( $this->params );
+	// Returns the most relevant registrant"s data
+	public function sync_registrant( $registrant = null ) {
+		if ( ! $registrant ) {
+			// Just assume registrant is the one in params variable
+			$registrant = $this->params_to_registrant( $this->params );
+		}
 
 		$result = $this->db->find_registrant( $registrant );
 		if ( ! $result ) {
@@ -229,9 +288,11 @@ class Domreg {
 
 	// Only updates registrant in local database and domreg
 	// Returns true on success, false if not found or on any executor error
-	public function update_registrant() {
-		// Just assume registrant is the one in params variable
-		$registrant = $this->extract_registrant( $this->params );
+	public function update_registrant( $registrant = null ) {
+		if ( ! $registrant ) {
+			// Just assume registrant is the one in params variable
+			$registrant = $this->params_to_registrant( $this->params );
+		}
 
 		$result = $this->db->find_registrant( $registrant );
 		if ( ! $result ) {
@@ -262,21 +323,22 @@ class Domreg {
 			"ns" => $domreg_ns,
 			"onExpire" => "delete"
 		));
-		return $response ? true : $this->executor_error();
+		return $response ? $this->executor_ok() : $this->executor_error();
 	}
 
 	public function renew_domain( $domain ) {
 		$response = $this->executor->EppDomainUpdate( $domain, array(), array(), array(
 			"onExpire" => "renew"
 		));
-		return $response ? true : $this->executor_error();
+		return $response ? $this->executor_ok() : $this->executor_error();
 	}
 
 	public function delete_domain( $domain ) {
 		$response = $this->executor->EppDomainDelete( $domain );
-		if ( ! $response ) return $this->executor_error();
-		return $this->executor_ok();
+		return $response ? $this->executor_ok() : $this->executor_error();
 	}
+
+
 
 	public function get_domain_info( $domain, $recursive = true ) {
 		$response = $this->executor->EppDomainInfo( $domain );
@@ -287,19 +349,29 @@ class Domreg {
 			"registrant_id" => $response["domain:infData"]["domain:registrant"]["#text"],
 			"contact_id" => $response["domain:infData"]["domain:contact"]["#text"],
 			"ns" => array(
-				$response['domain:infData']['domain:ns']['domain:hostAttr']['domain:hostName']['#text'],
-				$response['domain:infData']['domain:ns']['domain:hostAttr'][0]['domain:hostName']['#text'],
-				$response['domain:infData']['domain:ns']['domain:hostAttr'][1]['domain:hostName']['#text'],
-				$response['domain:infData']['domain:ns']['domain:hostAttr'][2]['domain:hostName']['#text']
+				$response["domain:infData"]["domain:ns"]["domain:hostAttr"]["domain:hostName"]["#text"],
+				$response["domain:infData"]["domain:ns"]["domain:hostAttr"][0]["domain:hostName"]["#text"],
+				$response["domain:infData"]["domain:ns"]["domain:hostAttr"][1]["domain:hostName"]["#text"],
+				$response["domain:infData"]["domain:ns"]["domain:hostAttr"][2]["domain:hostName"]["#text"]
 			),
 			# TODO: needs more info fields
 		);
 		if ( $recursive ) {
-			$registrant = $this->db->find_registrant( array( "id" => $data["registrant_id"] ), "id" );
+			$registrant = $this->db->find_registrant( array( "id" => $data["registrant_id"] ) );
 			if ( ! $registrant ) return $data;
 			$data["registrant"] = $registrant;
 		}
 		return $data;
+	}
+
+
+
+	public function get_ns_group( $domain ) {
+		// TODO: NS groups
+	}
+
+	public function set_ns_group( $domain, $ns ) {
+		// TODO: NS groups
 	}
 
 
@@ -318,30 +390,58 @@ class Domreg {
 		// Map nameservers to executor format
 		foreach ( $ns_add as $value ) $domreg_ns_add[ $value ] = array();
 		foreach ( $ns_rem as $value ) $domreg_ns_rem[ $value ] = array();
-		__domreg_log( $ns_existing );
-		__domreg_log( $ns_add );
-		__domreg_log( $ns_rem );
-		__domreg_log( $domreg_ns_add );
-		__domreg_log( $domreg_ns_rem );
 		// Update nameservers
 		$response = $this->executor->EppDomainUpdate( $domain, array(
 			"ns" => $domreg_ns_add
 		), array(
 			"ns" => $domreg_ns_rem
 		));
+		return $response ? $this->executor_ok() : $this->executor_error();
+	}
+
+
+
+	public function register_ns( $domain, $ns, $ip ) {
+		$response = $this->executor->EppDomainUpdate( $domain, array(
+			"ns" => array( $ns => array( 4 => $ip ) )
+		));
+		return $response ? $this->executor_ok() : $this->executor_error();
+	}
+
+	public function delete_ns( $domain, $ns ) {
+		$response = $this->executor->EppDomainUpdate( $domain, array(), array(
+			"ns" => array( $ns => array() )
+		));
+		return $response ? $this->executor_ok() : $this->executor_error();
+	}
+
+
+
+	public function poll() {
+		$response = $this->executor->EppPoll("req");
 		if ( ! $response ) return $this->executor_error();
+		switch ( $response["RCode"] ) {
+			case "1301":
+				if ( $response["type"] == "global" and $response["type"] == "domain" ) {
+					$this->log( "poll_1301", $response );
+					$this->executor->EppPoll( "ack", $response["id"] );
+				}
+			break;
+			case "1300":
+				if ( $response["type"] == "global" and $response["type"] == "domain" ) {
+					$this->log( "poll_1300", $response );
+					$this->executor->EppPoll( "ack", $response["id"] );
+				}
+				$this->log( "poll", "Queue is empty" );
+			break;
+			case "1000":
+				$this->log( "poll", "Ack OK" );
+			break;
+			default:
+				$this->log( "poll_unknown", $response );
+			break;
+		}
 		return $this->executor_ok();
 	}
-
-
-	/* Not done yet
-	public function update_ns_server( $domain, $ns, $ip ) {
-		$response = $this->executor->EppDomainUpdate( $domain, array(
-			"ns" => array(
-				$ns => $ip
-			)
-		));
-	}
-	*/
 	
 }
