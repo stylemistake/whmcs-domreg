@@ -36,14 +36,9 @@ class DomregRegistrantsDB {
 	}
 
 	public function available_index( $contact ) {
-		$field = null;
 		foreach ( array( "id", "client_id" ) as $i ) {
-			if ( isset( $contact[ $i ] ) ) {
-				$field = $i;
-				break;
-			}
+			if ( isset( $contact[ $i ] ) ) return $i;
 		}
-		return $field;
 	}
 
 	public function find_registrant( $contact ) {
@@ -130,14 +125,13 @@ class Domreg {
 		// Include dependencies
 		$path = "/usr/share/php";
 		set_include_path( get_include_path() . PATH_SEPARATOR . $path );
-		require_once("PEAR.php");
-		require_once("lib/Executor.class.php");
-		require_once("lib/Xml2Array.class.php");
-		require_once("pear/Net/EPP/Client.php");
+		require_once "PEAR.php";
+		require_once "lib/Executor.class.php";
+		require_once "lib/Xml2Array.class.php";
+		require_once "pear/Net/EPP/Client.php";
 
 		$this->executor = new Executor( array(
-			"regid" => $this->username,
-			"regpw" => $this->password,
+			"regid" => $this->username, "regpw" => $this->password,
 			"host" => "epp." . ( $this->is_testing ? "test." : "" ) . "domreg.lt",
 			"port" => 700, "timeout" => 10, "ssl" => true
 		));
@@ -157,23 +151,24 @@ class Domreg {
 		return $this->executor->EppLogout();
 	}
 
-	public function executor_error() {
-		$this->error = $this->executor->errorMsg;
+	public function response_error( $msg = null ) {
+		if ( $msg ) $this->error = $msg;
+		else $this->error = $this->executor->errorMsg;
 		return false;
 	}
 
-	public function executor_ok() {
+	public function response_ok() {
 		$this->error = false;
 		return true;
 	}
 
-	public function log( $action, $obj ) {
+	public function log( $action, $object ) {
 		if ( $this->log_to_whmcs and function_exists("logModuleCall") ) {
-			logModuleCall( "domreg_class", $action, $this->params, $obj );
+			logModuleCall( "domreg_class", $action, $this->params, $object );
 		}
 		if ( $this->log_to_console ) {
 			echo "domreg: " . $action;
-			if ( $obj !== null ) echo ": " . var_export( $obj, true );
+			if ( $object !== null ) echo ": " . var_export( $object, true );
 			echo "\n";
 		}
 	}
@@ -203,11 +198,6 @@ class Domreg {
 	public function params_to_registrant( $params, $registrant = array() ) {
 		// Static fields
 		$registrant["role"] = "registrant";
-
-		$this->log( "params_to_registrant", array(
-			"registrant" => $registrant,
-			"regdata" => $params
-		) );
 
 		// Default fields (when creating a contact)
 		if ( ! empty( $params["id"] ) )
@@ -265,7 +255,7 @@ class Domreg {
 		$result = $this->db->find_registrant( $registrant );
 		if ( ! $result ) {
 			$registrant["id"] = $this->executor->EppContactCreate( $registrant );
-			if ( ! $registrant["id"] ) return $this->executor_error();
+			if ( ! $registrant["id"] ) return $this->response_error();
 			$status = $this->db->save_registrant( $registrant );
 		} else {
 			$domreg_contact = $this->executor->EppContactInfo( $result["id"] );
@@ -277,7 +267,7 @@ class Domreg {
 			$status = $this->db->save_registrant( $registrant );
 			if ( $status === "updated" ) {
 				$response = $this->executor->EppContactUpdate( $registrant );
-				if ( ! $response ) $this->executor_error();
+				if ( ! $response ) $this->response_error();
 			}
 		}
 
@@ -296,18 +286,16 @@ class Domreg {
 		}
 
 		$result = $this->db->find_registrant( $registrant );
-		if ( ! $result ) {
-			$this->error = "Registrant not found";
-			return false;
-		} else {
+		if ( ! $result ) return $this->response_error("Registrant not found");
+		else {
 			$status = $this->db->save_registrant( $registrant );
 			if ( $status === "updated" ) {
 				$response = $this->executor->EppContactUpdate( $registrant );
-				if ( ! $response ) return $this->executor_error();
+				if ( ! $response ) return $this->response_error();
 			}
 		}
 
-		return $this->executor_ok();
+		return $this->response_ok();
 	}
 
 
@@ -324,7 +312,7 @@ class Domreg {
 			"ns" => $domreg_ns,
 			"onExpire" => "delete"
 		));
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 	public function transfer_domain( $domain, $registrant, $ns = array() ) {
@@ -340,7 +328,7 @@ class Domreg {
 			"onExpire" => "delete",
 			"trType" => "transfer"
 		));
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 	public function trade_domain( $domain, $registrant, $ns = array() ) {
@@ -350,26 +338,26 @@ class Domreg {
 			"contact" => $this->default_support_contact,
 			"trType" => "trade"
 		));
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 	public function renew_domain( $domain ) {
 		$response = $this->executor->EppDomainUpdate( $domain, array(), array(), array(
 			"onExpire" => "renew"
 		));
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 	public function delete_domain( $domain ) {
 		$response = $this->executor->EppDomainDelete( $domain );
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 
 
 	public function get_domain_info( $domain, $recursive = true ) {
 		$response = $this->executor->EppDomainInfo( $domain );
-		if ( ! $response ) return $this->executor_error();
+		if ( ! $response ) return $this->response_error();
 		$data = array(
 			"domain" => $response["domain:infData"]["domain:name"]["#text"],
 			"on_expire" => $response["domain:infData"]["domain:onExpire"]["#text"],
@@ -385,8 +373,8 @@ class Domreg {
 		);
 		if ( $recursive ) {
 			$registrant = $this->db->find_registrant( array( "id" => $data["registrant_id"] ) );
-			if ( ! $registrant ) return $data;
-			$data["registrant"] = $registrant;
+			if ( ! $registrant ) $this->response_error("Registrant not found");
+			else $data["registrant"] = $registrant;
 		}
 		return $data;
 	}
@@ -405,7 +393,7 @@ class Domreg {
 
 	public function get_ns_servers( $domain ) {
 		$response = $this->get_domain_info( $domain, false );
-		if ( ! $response ) return $this->executor_error();
+		if ( ! $response ) return $this->response_error();
 		return array_filter( $response["ns"] );
 	}
 
@@ -423,7 +411,7 @@ class Domreg {
 		), array(
 			"ns" => $domreg_ns_rem
 		));
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 
@@ -432,21 +420,21 @@ class Domreg {
 		$response = $this->executor->EppDomainUpdate( $domain, array(
 			"ns" => array( $ns => array( 4 => $ip ) )
 		));
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 	public function delete_ns( $domain, $ns ) {
 		$response = $this->executor->EppDomainUpdate( $domain, array(), array(
 			"ns" => array( $ns => array() )
 		));
-		return $response ? $this->executor_ok() : $this->executor_error();
+		return $response ? $this->response_ok() : $this->response_error();
 	}
 
 
 
 	public function poll() {
 		$response = $this->executor->EppPoll("req");
-		if ( ! $response ) return $this->executor_error();
+		if ( ! $response ) return $this->response_error();
 		switch ( $response["RCode"] ) {
 			case "1301":
 				if ( $response["type"] == "global" and $response["type"] == "domain" ) {
@@ -468,7 +456,7 @@ class Domreg {
 				$this->log( "poll_unknown", $response );
 			break;
 		}
-		return $this->executor_ok();
+		return $this->response_ok();
 	}
 	
 }

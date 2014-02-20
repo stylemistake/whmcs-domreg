@@ -60,7 +60,6 @@ function domreg_GetNameservers( $params ) {
 	else {
 		foreach ( $response as $i => $value ) $values[ "ns". ($i+1) ] = $value;
 	}
-	# If error, return the error message in the value below
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -72,7 +71,6 @@ function domreg_SaveNameservers( $params ) {
 	$domreg = new Domreg( $params );
 	$response = $domreg->set_ns_servers( $domain, $ns );
 	if ( ! $response ) $error = $domreg->error;
-	# If error, return the error message in the value below
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -98,7 +96,6 @@ function domreg_TransferDomain( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$transfersecret = $params["transfersecret"];
 	for ( $i = 1; $i <= 4; $i++ ) $ns[] = $params[ "ns".$i ];
-	#$error = "Domain transfering function is temporarily disabled.";
 	$domreg = new Domreg( $params );
 	$registrant = $domreg->sync_registrant();
 	if ( ! $registrant ) $error = $domreg->error;
@@ -106,7 +103,6 @@ function domreg_TransferDomain( $params ) {
 		$domreg->transfer_domain( $domain, $registrant, $ns );
 		if ( ! $response ) $error = $domreg->error;
 	}
-	# If error, return the error message in the value below
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -118,7 +114,6 @@ function domreg_RenewDomain( $params ) {
 	$domreg = new Domreg( $params );
 	$response = $domreg->renew_domain( $domain );
 	if ( ! $response ) $error = $domreg->error;
-	# If error, return the error message in the value below
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -129,7 +124,6 @@ function domreg_RequestDelete( $params ) {
 	$domreg = new Domreg( $params );
 	$response = $domreg->delete_domain( $domain );
 	if ( ! $response ) $error = $domreg->error;
-	# If error, return the error message in the value below
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
