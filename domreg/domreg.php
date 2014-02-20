@@ -28,6 +28,30 @@ function domreg_getConfigArray() {
 	);
 }
 
+function domreg_ClientAreaCustomButtonArray() {
+	return array(
+		"Request client's ID" => "RequestClientId",
+	);
+}
+
+function domreg_RequestClientId( $params ) {
+	$domain = $params["sld"] . "." . $params["tld"];
+	$domreg = new Domreg( $params );
+	$response = $domreg->get_domain_info( $domain );
+	if ( ! $response ) $error = $domreg->error;
+	else $registrant = $response["registrant"];
+	return array(
+		"templatefile" => "client_id",
+		"breadcrumb" => array(
+			"clientarea.php?action=domaindetails&domainid=" . $domain_id . "&modop=custom&a=RequestClientId" => "RequestClientId"
+		),
+		"vars" => array(
+			"client_id" => $registrant["id"],
+			"error" => $error,
+		),
+	);
+}
+
 function domreg_GetNameservers( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$domreg = new Domreg( $params );
@@ -54,9 +78,9 @@ function domreg_SaveNameservers( $params ) {
 	return $values;
 }
 
-function domreg_RegisterDomain($params) {
+function domreg_RegisterDomain( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	for ( $i = 1; $i <= 4; $i++ ) $ns[] = $params["ns".$i];
+	for ( $i = 1; $i <= 4; $i++ ) $ns[] = $params[ "ns".$i ];
 	$domreg = new Domreg( $params );
 	$registrant = $domreg->sync_registrant();
 	if ( ! $registrant ) $error = $domreg->error;
@@ -70,17 +94,25 @@ function domreg_RegisterDomain($params) {
 	return $values;
 }
 
-function domreg_TransferDomain($params) {
+function domreg_TransferDomain( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$transfersecret = $params["transfersecret"];
-	$error = "Domain transfering function is temporarily disabled.";
+	for ( $i = 1; $i <= 4; $i++ ) $ns[] = $params[ "ns".$i ];
+	#$error = "Domain transfering function is temporarily disabled.";
+	$domreg = new Domreg( $params );
+	$registrant = $domreg->sync_registrant();
+	if ( ! $registrant ) $error = $domreg->error;
+	else {
+		$domreg->transfer_domain( $domain, $registrant, $ns );
+		if ( ! $response ) $error = $domreg->error;
+	}
 	# If error, return the error message in the value below
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
 }
 
-function domreg_RenewDomain($params) {
+function domreg_RenewDomain( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$regperiod = $params["regperiod"];
 	$domreg = new Domreg( $params );
@@ -137,7 +169,7 @@ function domreg_SaveContactDetails( $params ) {
 	return $values;
 }
 
-function domreg_RegisterNameserver($params) {
+function domreg_RegisterNameserver( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$domreg = new Domreg( $params );
 	$response = $domreg->register_ns( $domain, $params["nameserver"], $params["ipaddress"] );
@@ -147,7 +179,7 @@ function domreg_RegisterNameserver($params) {
 	return $values;
 }
 
-function domreg_ModifyNameserver($params) {
+function domreg_ModifyNameserver( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$domreg = new Domreg( $params );
 	$domreg->delete_ns( $domain, $params["nameserver"] );
@@ -158,7 +190,7 @@ function domreg_ModifyNameserver($params) {
 	return $values;
 }
 
-function domreg_DeleteNameserver($params) {
+function domreg_DeleteNameserver( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$domreg = new Domreg( $params );
 	$response = $domreg->delete_ns( $domain, $params["nameserver"] );

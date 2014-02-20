@@ -52,7 +52,8 @@ class DomregRegistrantsDB {
 		$where = array( $field => $contact[ $field ] );
 		$query = select_query( $this->table, $fields, $where );
 		if ( ! $query ) return false;
-		return array_filter( mysql_fetch_assoc( $query ) );
+		$result = mysql_fetch_assoc( $query );
+		return $result ? array_filter( $result ) : false;
 	}
 
 	public function save_registrant( $contact ) {
@@ -172,7 +173,7 @@ class Domreg {
 		}
 		if ( $this->log_to_console ) {
 			echo "domreg: " . $action;
-			if ( $obj ) echo ": " . var_export( $obj, true );
+			if ( $obj !== null ) echo ": " . var_export( $obj, true );
 			echo "\n";
 		}
 	}
@@ -254,7 +255,7 @@ class Domreg {
 
 
 	// Synchronizes registrant with local database and domreg
-	// Returns the most relevant registrant"s data
+	// Returns the most relevant registrant's data
 	public function sync_registrant( $registrant = null ) {
 		if ( ! $registrant ) {
 			// Just assume registrant is the one in params variable
@@ -311,7 +312,7 @@ class Domreg {
 
 
 
-	public function create_domain( $domain, $registrant, $ns ) {
+	public function create_domain( $domain, $registrant, $ns = array() ) {
 		// Map nameservers to executor format
 		$ns = array_filter( $ns );
 		foreach ( $ns as $value ) $domreg_ns[ $value ] = array();
@@ -322,6 +323,32 @@ class Domreg {
 			"contact" => $this->default_support_contact,
 			"ns" => $domreg_ns,
 			"onExpire" => "delete"
+		));
+		return $response ? $this->executor_ok() : $this->executor_error();
+	}
+
+	public function transfer_domain( $domain, $registrant, $ns = array() ) {
+		// Map nameservers to executor format
+		$ns = array_filter( $ns );
+		foreach ( $ns as $value ) $domreg_ns[ $value ] = array();
+		// Transfer domain
+		$response = $this->executor->EppDomainTransfer( array(
+			"name" => $domain,
+			"registrant" => $registrant["id"],
+			"contact" => $this->default_support_contact,
+			"ns" => $domreg_ns,
+			"onExpire" => "delete",
+			"trType" => "transfer"
+		));
+		return $response ? $this->executor_ok() : $this->executor_error();
+	}
+
+	public function trade_domain( $domain, $registrant, $ns = array() ) {
+		$response = $this->executor->EppDomainTransfer( array(
+			"name" => $domain,
+			"registrant" => $registrant["id"],
+			"contact" => $this->default_support_contact,
+			"trType" => "trade"
 		));
 		return $response ? $this->executor_ok() : $this->executor_error();
 	}
@@ -382,7 +409,7 @@ class Domreg {
 		return array_filter( $response["ns"] );
 	}
 
-	public function set_ns_servers( $domain, $ns ) {
+	public function set_ns_servers( $domain, $ns = array() ) {
 		$ns = array_filter( $ns );
 		$ns_existing = $this->get_ns_servers( $domain );
 		$ns_add = array_diff( $ns, $ns_existing );
