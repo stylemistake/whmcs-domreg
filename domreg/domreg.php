@@ -7,11 +7,11 @@ function domreg_getConfigArray() {
 	return array(
 		"Username" => array(
 			"Type" => "text", "Size" => "20", "Default" => "",
-			"Description" => "Domreg.lt RN login"
+			"Description" => "Domreg.lt RN login (required)"
 		),
 		"Password" => array(
 			"Type" => "password", "Size" => "20", "Default" => "",
-			"Description" => "Domreg.lt RN password"
+			"Description" => "Domreg.lt RN password (required)"
 		),
 		"TestMode" => array(
 			"Type" => "yesno", "Default" => "no",
@@ -23,7 +23,23 @@ function domreg_getConfigArray() {
 		),
 		"SupportContact" => array(
 			"Type" => "text", "Size" => "20", "Default" => "",
-			"Description" => "Domreg.lt support contact (eg. CN1234)"
+			"Description" => "Domreg.lt support contact (eg. CN1234, required)"
+		),
+		"NsGroup1" => array(
+			"Type" => "text", "Size" => "20", "Default" => "",
+			"Description" => "Domreg.lt nameserver group 1 (optional)"
+		),
+		"NsGroup2" => array(
+			"Type" => "text", "Size" => "20", "Default" => "",
+			"Description" => "Domreg.lt nameserver group 2 (optional)"
+		),
+		"NsGroup3" => array(
+			"Type" => "text", "Size" => "20", "Default" => "",
+			"Description" => "Domreg.lt nameserver group 3 (optional)"
+		),
+		"NsGroup4" => array(
+			"Type" => "text", "Size" => "20", "Default" => "",
+			"Description" => "Domreg.lt nameserver group 4 (optional)"
 		),
 	);
 }
@@ -42,9 +58,6 @@ function domreg_RequestClientId( $params ) {
 	else $registrant = $response["registrant"];
 	return array(
 		"templatefile" => "client_id",
-		"breadcrumb" => array(
-			"clientarea.php?action=domaindetails&domainid=" . $domain_id . "&modop=custom&a=RequestClientId" => "RequestClientId"
-		),
 		"vars" => array(
 			"client_id" => $registrant["id"],
 			"error" => $error,
@@ -58,7 +71,7 @@ function domreg_GetNameservers( $params ) {
 	$response = $domreg->get_ns_servers( $domain );
 	if ( ! $response ) $error = $domreg->error;
 	else {
-		foreach ( $response as $i => $value ) $values[ "ns". ($i+1) ] = $value;
+		foreach ( $response["ns"] as $i => $value ) $values[ "ns". ($i+1) ] = $value;
 	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
@@ -192,4 +205,14 @@ function domreg_DeleteNameserver( $params ) {
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
+}
+
+function domreg_Sync( $params ) {
+	$domain = $params["sld"] . "." . $params["tld"];
+	$domreg = new Domreg( $params );
+	$response = $domreg->get_domain_info( $domain );
+	if ( ! $response ) $error = $domreg->error;
+	$values["error"] = $error;
+	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
+	return $values;		
 }

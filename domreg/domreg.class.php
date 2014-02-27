@@ -95,7 +95,7 @@ class Domreg {
 	public $registrants_table = "domreg_registrants";
 	public $whmcs_admin = "admin";
 	public $default_support_contact;
-	public $default_domain_group;
+	public $ns_groups = array();
 
 	public $is_testing = false;
 	public $params;
@@ -116,6 +116,10 @@ class Domreg {
 		$this->username = $params["Username"];
 		$this->password = $params["Password"];
 		$this->default_support_contact = $params["SupportContact"];
+		$this->ns_groups = array_filter( array(
+			$params["NsGroup1"], $params["NsGroup2"],
+			$params["NsGroup3"], $params["NsGroup4"],
+		));
 
 		foreach ( $options as $opt => $value ) $this->{$opt} = $value;
 
@@ -363,53 +367,101 @@ class Domreg {
 			"on_expire" => $response["domain:infData"]["domain:onExpire"]["#text"],
 			"registrant_id" => $response["domain:infData"]["domain:registrant"]["#text"],
 			"contact_id" => $response["domain:infData"]["domain:contact"]["#text"],
-			"ns" => array(
+			"status" => $response["domain:infData"]["domain:status"]["@s"],
+			"ns_groups" => array_filter( array(
+				$response["domain:infData"]["domain:ns"]["domain:hostGroup"]["#text"],
+				$response["domain:infData"]["domain:ns"]["domain:hostGroup"][0]["#text"],
+			)),
+			"ns" => array_filter( array(
 				$response["domain:infData"]["domain:ns"]["domain:hostAttr"]["domain:hostName"]["#text"],
 				$response["domain:infData"]["domain:ns"]["domain:hostAttr"][0]["domain:hostName"]["#text"],
 				$response["domain:infData"]["domain:ns"]["domain:hostAttr"][1]["domain:hostName"]["#text"],
-				$response["domain:infData"]["domain:ns"]["domain:hostAttr"][2]["domain:hostName"]["#text"]
-			),
-			# TODO: needs more info fields
+				$response["domain:infData"]["domain:ns"]["domain:hostAttr"][2]["domain:hostName"]["#text"],
+			)),
 		);
 		if ( $recursive ) {
 			$registrant = $this->db->find_registrant( array( "id" => $data["registrant_id"] ) );
 			if ( ! $registrant ) $this->response_error("Registrant not found");
 			else $data["registrant"] = $registrant;
+			if ( count( $data["ns_groups"] ) > 0 ) {
+				foreach ( $data["ns_groups"] as $ns_group ) {
+					$ns = $this->get_ns_group_info( $ns_group );
+					$data["ns"] = array_merge( $ns, $data["ns"] );
+				}
+			}
 		}
 		return $data;
 	}
 
 
 
-	public function get_ns_group( $domain ) {
-		// TODO: NS groups
+	public function get_ns_group_info( $ns_group ) {
+		$response = $this->executor->EppNsGroupInfo( $ns_group );
+		if ( ! $response ) return $this->response_error();
+		return array_filter( array(
+			$response["nsgroup:ns"]["#text"],
+			$response["nsgroup:ns"][0]["#text"],
+			$response["nsgroup:ns"][1]["#text"],
+			$response["nsgroup:ns"][2]["#text"],
+		));
 	}
 
-	public function set_ns_group( $domain, $ns ) {
-		// TODO: NS groups
+	public function group_ns_servers( $ns ) {
+		$result = array(
+			"ns_groups" => array(),
+			"ns" => array_filter( $ns ),
+		);
+		foreach ( $this->ns_groups as $ns_group ) {
+			if ( ! $response = $this->get_ns_group_info( $ns_group ) ) continue;
+			$ns_diff = array_diff( $result["ns"], $response );
+			if ( count( $result["ns"] ) > count( $ns_diff ) ) {
+				$result["ns_groups"][] = $ns_group;
+				$result["ns"] = $ns_diff;
+			}
+		}
+		$this->log( "nsnsns", $result );
+		return $result;
 	}
 
 
-
-	public function get_ns_servers( $domain ) {
+	public function get_ns_servers( $domain, $ns_merging = true ) {
 		$response = $this->get_domain_info( $domain, false );
 		if ( ! $response ) return $this->response_error();
-		return array_filter( $response["ns"] );
+		if ( $ns_merging and count( $response["ns_groups"] ) > 0 ) {
+			foreach ( $response["ns_groups"] as $ns_group ) {
+				$ns = $this->get_ns_group_info( $ns_group );
+				$response["ns"] = array_merge( $ns, $response["ns"] );
+			}
+		}
+		return array(
+			"ns_groups" => $response["ns_groups"],
+			"ns" => $response["ns"],
+		);
 	}
 
 	public function set_ns_servers( $domain, $ns = array() ) {
-		$ns = array_filter( $ns );
-		$ns_existing = $this->get_ns_servers( $domain );
-		$ns_add = array_diff( $ns, $ns_existing );
-		$ns_rem = array_diff( $ns_existing, $ns );
+		$ns1 = $this->group_ns_servers( array_filter( $ns ) );
+		$ns2 = $this->get_ns_servers( $domain, false );
+		if ( ! $ns2 ) return $this->response_error();
+		$ns_add = array(
+			"ns_groups" => array_diff( $ns1["ns_groups"], $ns2["ns_groups"] ),
+			"ns" => array_diff( $ns1["ns"], $ns2["ns"] ),
+		);
+		$ns_rem = array(
+			"ns_groups" => array_diff( $ns2["ns_groups"], $ns1["ns_groups"] ),
+			"ns" => array_diff( $ns2["ns"], $ns1["ns"] ),
+		);
 		// Map nameservers to executor format
-		foreach ( $ns_add as $value ) $domreg_ns_add[ $value ] = array();
-		foreach ( $ns_rem as $value ) $domreg_ns_rem[ $value ] = array();
+		foreach ( $ns_add["ns"] as $value ) $ns_add["ns_domreg"][ $value ] = array();
+		foreach ( $ns_rem["ns"] as $value ) $ns_rem["ns_domreg"][ $value ] = array();
+
 		// Update nameservers
 		$response = $this->executor->EppDomainUpdate( $domain, array(
-			"ns" => $domreg_ns_add
+			"ns_groups" => $ns_add["ns_groups"],
+			"ns" => $ns_add["ns_domreg"]
 		), array(
-			"ns" => $domreg_ns_rem
+			"ns_groups" => $ns_rem["ns_groups"],
+			"ns" => $ns_rem["ns_domreg"]
 		));
 		return $response ? $this->response_ok() : $this->response_error();
 	}
