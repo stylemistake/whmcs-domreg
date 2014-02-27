@@ -14,7 +14,7 @@ function domreg_getConfigArray() {
 			"Description" => "Domreg.lt RN password (required)"
 		),
 		"TestMode" => array(
-			"Type" => "yesno", "Default" => "no",
+			"Type" => "dropdown", "Options" => "Enable,Disable", "Default" => "Enable",
 			"Description" => "Testing mode"
 		),
 		"RegistrantsTable" => array(
@@ -214,5 +214,5 @@ function domreg_Sync( $params ) {
 	if ( ! $response ) $error = $domreg->error;
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
-	return $values;		
+	return $values;
 }

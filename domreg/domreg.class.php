@@ -111,7 +111,7 @@ class Domreg {
 		self::$instance = $this;
 		$this->params = $params;
 
-		if ( isset($params["TestMode"]) ) $this->is_testing = $params["TestMode"];
+		if ( isset($params["TestMode"]) ) $this->is_testing = ( $params["TestMode"] == "Enable" );
 		if ( isset($params["RegistrantsTable"]) ) $this->registrants_table = $params["RegistrantsTable"];
 		$this->username = $params["Username"];
 		$this->password = $params["Password"];
