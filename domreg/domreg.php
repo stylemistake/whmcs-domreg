@@ -1,7 +1,7 @@
 <?php
 
 define( "WHMCS_MODULE", "DOMREG" );
-require_once("domreg.class.php");
+require_once "domreg.class.php";
 
 function domreg_getConfigArray() {
 	return array(

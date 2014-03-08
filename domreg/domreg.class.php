@@ -1,9 +1,5 @@
 <?php
 
-error_reporting( E_ERROR | E_WARNING | E_PARSE );
-ini_set( "display_errors", 1 );
-
-
 // --------------------------------------------------------------------------
 //  Local database of Domreg registrants
 // --------------------------------------------------------------------------
@@ -419,7 +415,6 @@ class Domreg {
 				$result["ns"] = $ns_diff;
 			}
 		}
-		$this->log( "nsnsns", $result );
 		return $result;
 	}
 
