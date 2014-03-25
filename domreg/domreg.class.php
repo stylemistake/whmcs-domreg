@@ -174,26 +174,6 @@ class Domreg {
 	}
 
 
-
-	// Convert phone number to domreg format
-	public function convert_phone_number( $number, $cc = "lt" ) {
-		$number = preg_replace( "(\+370\.370)", "370", $number );
-		$number = preg_replace( "(\+370\.86)", "3706", $number );
-		// If number looks like local lithuanian, change it to int. format
-		if ( preg_match( "/8.{8}/", $number ) ) {
-			$number = "370" . substr( $number, -8 );
-		}
-		// Int. number pattern
-		$pattern = "/(9[976]\d|8[987530]\d|6[987]\d|5[90]\d|42\d|3[875]\d" .
-			"|2[98654321]\d|9[8543210]|8[6421]|6[6543210]|5[87654321]" .
-			"|4[987654310]|3[9643210]|2[70]|7|1)(.{7,15})/";
-		$is_matching = preg_match( $pattern, $number, $matches );
-		if ( ! $is_matching or count( $matches ) != 3 ) return false;
-		return "+" . $matches[1] . "." . $matches[2];
-	}
-
-
-
 	// Extracts registrant info from params variable
 	public function params_to_registrant( $params, $registrant = array() ) {
 		// Static fields
@@ -211,7 +191,7 @@ class Domreg {
 		if ( ! empty( $params["country"] ) )
 			$registrant["cc"] = strtolower( $params["country"] );
 		if ( ! empty( $params["phonenumber"] ) )
-			$registrant["voice"] = $this->convert_phone_number( $params["phonenumber"] );
+			$registrant["voice"] = "+" . $params["phonecc"] . "." . $params["phonenumber"];
 		if ( ! empty( $params["email"] ) )
 			$registrant["email"] = strtolower( $params["email"] );
 		if ( ! empty( $params["state"] ) )
@@ -225,7 +205,7 @@ class Domreg {
 		if ( ! empty( $params["Email"] ) )
 			$registrant["email"] = $params["Email"];
 		if ( ! empty( $params["Phone Number"] ) )
-			$registrant["voice"] = $this->convert_phone_number( $params["Phone Number"] );
+			$registrant["voice"] = $params["Phone Number"];
 		if ( ! empty( $params["Street"] ) )
 			$registrant["street"] = trim( $params["Street"] );
 		if ( ! empty( $params["City"] ) )
