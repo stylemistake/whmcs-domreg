@@ -236,7 +236,27 @@ class Executor {
 			return false;
 		}
 		$this->data = $Response['resData'];
-		return $this->data['contact:infData'];
+		$contact = $Response['resData']['contact:infData'];
+
+		if ( ! $contact ) {
+			return false;
+		}
+
+		return array(
+			"id"     => $contact["contact:id"]["#text"],
+			"name"   => $contact["contact:postalInfo"]["contact:name"]["#text"],
+			"org"    => $contact["contact:postalInfo"]["contact:org"]["#text"],
+			"street" => $contact["contact:postalInfo"]["contact:addr"]["contact:street"]["#text"],
+			"city"   => $contact["contact:postalInfo"]["contact:addr"]["contact:city"]["#text"],
+			"sp"     => $contact["contact:postalInfo"]["contact:addr"]["contact:sp"]["#text"],
+			"pc"     => $contact["contact:postalInfo"]["contact:addr"]["contact:pc"]["#text"],
+			"cc"     => $contact["contact:postalInfo"]["contact:addr"]["contact:cc"]["#text"],
+			"voice"  => $contact["contact:voice"]["#text"],
+			"email"  => $contact["contact:email"]["#text"],
+			"role"   => $contact["contact:role"]["#text"],
+			"date_created" => $contact["contact:crDate"]["#text"],
+			"date_updated" => $contact["contact:upDate"]["#text"],
+		);
 	}
 
 	function EppContactCreate($Cdata){
@@ -472,6 +492,10 @@ class Executor {
 			$this->MakeError('No onExpire supplied!');
 			return false;
 		}
+		if (!isset($data['period']) || empty($data['period'])){
+			$this->MakeError('No period supplied!');
+			return false;
+		}
 		if (isset($data['ns']) && count($data['ns']) == 0) {
 			$this->MakeError('Empty NS array supplied!');
 			return false;
@@ -486,6 +510,7 @@ class Executor {
 			<create>
 				<domain:create xmlns:domain=\"http://www.domreg.lt/epp/xml/domreg-domain-1.0\">
 				<domain:name>{$data['name']}</domain:name>
+				<domain:period unit=\"y\">" . $data['period'] . "</domain:period>
 				<domain:onExpire>{$data['onExpire']}</domain:onExpire>";
 				if (isset($data['ns_groups']) or isset($data['ns']) ) {
 					$cmd .= "<domain:ns>";

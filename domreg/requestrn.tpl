@@ -10,7 +10,7 @@
 <p style="font-size: 110%; text-align: center">
 	<b>Your client id is:</b><br />
 </p>
-<p style="font-size: 200%; text-align: center; background: #EEE; padding: 5px">{$client_id}</p>
+<p style="font-size: 200%; text-align: center; background: #EEE; padding: 5px">{$registrant_id}</p>
 
 <br />
 {/if}

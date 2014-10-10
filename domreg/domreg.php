@@ -18,7 +18,7 @@ function domreg_getConfigArray() {
 			"Description" => "Testing mode"
 		),
 		"RegistrantsTable" => array(
-			"Type" => "text", "Size" => "20", "Default" => "domreg_registrants",
+			"Type" => "text", "Size" => "20", "Default" => "mod_domreg_registrants",
 			"Description" => "Default registrants table (automatically created)"
 		),
 		"SupportContact" => array(
@@ -41,37 +41,55 @@ function domreg_getConfigArray() {
 			"Type" => "text", "Size" => "20", "Default" => "",
 			"Description" => "Domreg.lt nameserver group 4 (optional)"
 		),
+		"AdminUser" => array(
+			"Type" => "text", "Size" => "20", "Default" => "admin",
+			"Description" => "WHMCS Admin User (for API)"
+		)
+	);
+}
+
+function domreg_AdminCustomButtonArray() {
+	return array(
+		"Sync" => "SyncManual",
 	);
 }
 
 function domreg_ClientAreaCustomButtonArray() {
 	return array(
-		"Request client's ID" => "RequestClientId",
+		"requestrn" => "RequestRn",
 	);
 }
 
-function domreg_RequestClientId( $params ) {
+function domreg_RequestRn( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->get_domain_info( $domain );
-	if ( ! $response ) $error = $domreg->error;
-	else $registrant = $response["registrant"];
-	return array(
-		"templatefile" => "client_id",
-		"vars" => array(
-			"client_id" => $registrant["id"],
-			"error" => $error,
-		),
-	);
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->getRegistrantByDomain( $domain );
+		return array(
+			"templatefile" => "requestrn",
+			"vars" => array(
+				"registrant_id" => $response["id"],
+				"error" => $error,
+			),
+		);
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
+	$values["error"] = $error;
+	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
+	return $values;
 }
 
 function domreg_GetNameservers( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->get_ns_servers( $domain );
-	if ( ! $response ) $error = $domreg->error;
-	else {
-		foreach ( $response["ns"] as $i => $value ) $values[ "ns". ($i+1) ] = $value;
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->getNs( $domain );
+		foreach ( $response["ns"] as $i => $ns ) {
+			$values[ "ns". ($i+1) ] = $ns;
+		}
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
 	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
@@ -80,10 +98,15 @@ function domreg_GetNameservers( $params ) {
 
 function domreg_SaveNameservers( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	for ( $i = 1; $i <= 4; $i++ ) $ns[] = $params[ "ns".$i ];
-	$domreg = new Domreg( $params );
-	$response = $domreg->set_ns_servers( $domain, $ns );
-	if ( ! $response ) $error = $domreg->error;
+	for ( $i = 1; $i <= 4; $i++ ) {
+		$ns[] = $params[ "ns".$i ];
+	}
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->setNs( $domain, $ns );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -91,30 +114,36 @@ function domreg_SaveNameservers( $params ) {
 
 function domreg_RegisterDomain( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	for ( $i = 1; $i <= 4; $i++ ) $ns[] = $params[ "ns".$i ];
-	$domreg = new Domreg( $params );
-	$registrant = $domreg->sync_registrant();
-	if ( ! $registrant ) $error = $domreg->error;
-	else {
-		$response = $domreg->create_domain( $domain, $registrant, $ns );
-		if ( ! $response ) $error = $domreg->error;
+	$client_id = $params["userid"];
+	$regperiod = $params["regperiod"];
+	for ( $i = 1; $i <= 4; $i++ ) {
+		$ns[] = $params[ "ns".$i ];
 	}
-	$processeddata = $domreg->executor->errorMsg;
+	try {
+		$domreg = new Domreg( $params );
+		$registrant = $domreg->requireRegistrant( $client_id, $domain );
+		$response = $domreg->api->createDomain( $domain, $registrant, $ns, $regperiod );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
-	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $processeddata );
+	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
 }
 
 function domreg_TransferDomain( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$transfersecret = $params["transfersecret"];
-	for ( $i = 1; $i <= 4; $i++ ) $ns[] = $params[ "ns".$i ];
-	$domreg = new Domreg( $params );
-	$registrant = $domreg->sync_registrant();
-	if ( ! $registrant ) $error = $domreg->error;
-	else {
-		$domreg->transfer_domain( $domain, $registrant, $ns );
-		if ( ! $response ) $error = $domreg->error;
+	$client_id = $params["userid"];
+	for ( $i = 1; $i <= 4; $i++ ) {
+		$ns[] = $params[ "ns".$i ];
+	}
+	try {
+		$domreg = new Domreg( $params );
+		$registrant = $domreg->requireRegistrant( $client_id, $domain );
+		$response = $domreg->api->transferDomain( $domain, $registrant, $ns );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
 	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
@@ -124,9 +153,12 @@ function domreg_TransferDomain( $params ) {
 function domreg_RenewDomain( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$regperiod = $params["regperiod"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->renew_domain( $domain );
-	if ( ! $response ) $error = $domreg->error;
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->renewDomain( $domain );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -134,9 +166,12 @@ function domreg_RenewDomain( $params ) {
 
 function domreg_RequestDelete( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->delete_domain( $domain );
-	if ( ! $response ) $error = $domreg->error;
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->deleteDomain( $domain );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -144,43 +179,46 @@ function domreg_RequestDelete( $params ) {
 
 function domreg_GetContactDetails( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->get_domain_info( $domain );
-	if ( ! $response ) $error = $domreg->error;
-	else {
-		$values["Registrant"]["Email"] = $response["registrant"]["email"];
-		$values["Registrant"]["Phone Number"] = $response["registrant"]["voice"];
-		$values["Registrant"]["Street"] = $response["registrant"]["street"];
-		$values["Registrant"]["City"] = $response["registrant"]["city"];
-		$values["Registrant"]["Region"] = $response["registrant"]["sp"];
-		$values["Registrant"]["Post code"] = $response["registrant"]["pc"];
-		$values["Registrant"]["Country code"] = $response["registrant"]["cc"];
+	try {
+		$domreg = new Domreg( $params );
+		$registrant = $domreg->api->getRegistrantByDomain( $domain );
+		$values["Registrant"]["Email"] = $registrant["email"];
+		$values["Registrant"]["Phone Number"] = $registrant["voice"];
+		$values["Registrant"]["Street"] = $registrant["street"];
+		$values["Registrant"]["City"] = $registrant["city"];
+		$values["Registrant"]["Region"] = $registrant["sp"];
+		$values["Registrant"]["Post code"] = $registrant["pc"];
+		$values["Registrant"]["Country code"] = $registrant["cc"];
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
 	}
-	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
+	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $registrant, $error );
 	return $values;
 }
 
 function domreg_SaveContactDetails( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$regdata = $params["contactdetails"]["Registrant"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->get_domain_info( $domain );
-	if ( ! $response ) $error = $domreg->error;
-	else {
-		$registrant = $domreg->params_to_registrant( $regdata, $response["registrant"] );
-		$response = $domreg->update_registrant( $registrant );
-		if ( ! $response ) $error = $domreg->error;
+	try {
+		$domreg = new Domreg( $params );
+		$registrant = $domreg->api->getRegistrantByDomain( $domain );
+		$registrant = DomregRegistrant::createFromWHMCSParams( $regdata, $registrant );
+		$response = $domreg->api->updateRegistrant( $registrant );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
 	}
-	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
 }
 
 function domreg_RegisterNameserver( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->register_ns( $domain, $params["nameserver"], $params["ipaddress"] );
-	if ( ! $response ) $error = $domreg->error;
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->addNs( $domain, $params["nameserver"], $params["ipaddress"] );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -188,10 +226,13 @@ function domreg_RegisterNameserver( $params ) {
 
 function domreg_ModifyNameserver( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	$domreg = new Domreg( $params );
-	$domreg->delete_ns( $domain, $params["nameserver"] );
-	$response = $domreg->register_ns( $domain, $params["nameserver"], $params["newipaddress"] );
-	if ( ! $response ) $error = $domreg->error;
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->deleteNs( $domain, $params["nameserver"] );
+		$response = $domreg->api->addNs( $domain, $params["nameserver"], $params["newipaddress"] );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
@@ -199,20 +240,76 @@ function domreg_ModifyNameserver( $params ) {
 
 function domreg_DeleteNameserver( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
-	$domreg = new Domreg( $params );
-	$response = $domreg->delete_ns( $domain, $params["nameserver"] );
-	if ( ! $response ) $error = $domreg->error;
+	try {
+		$domreg = new Domreg( $params );
+		$response = $domreg->api->deleteNs( $domain, $params["nameserver"] );
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
 	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
 	return $values;
 }
 
+function domreg_TransferSync( $params ) {
+	$domain = $params["sld"] . "." . $params["tld"];
+	try {
+		$domreg = new Domreg( $params );
+		$domain_info = $domreg->api->getDomainInfo( $domain );
+		$values["active"] = ( $domain_info["status"] == "registered" );
+		$values["registrationdate"] = $domain_info["date_created"];
+		$values["expirydate"] = $domain_info["date_expires"];
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
+	$values["error"] = $error;
+	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $domain_info, $error );
+	return $values;
+}
+
+
 function domreg_Sync( $params ) {
 	$domain = $params["sld"] . "." . $params["tld"];
 	$domreg = new Domreg( $params );
-	$response = $domreg->get_domain_info( $domain );
-	if ( ! $response ) $error = $domreg->error;
+	try {
+		$domreg = new Domreg( $params );
+		$domain_info = $domreg->api->getDomainInfo( $domain );
+		$values["active"] = ( $domain_info["status"] == "registered" );
+		$values["registrationdate"] = $domain_info["date_created"];
+		$values["expirydate"] = $domain_info["date_expires"];
+	} catch ( DomregAPIExecutorException $e ) {
+		if ( $domreg->executor->status["rcode"] == "2201" ) {
+			localAPI( "updateclientdomain", array(
+				"domainid" => $params["domainid"],
+				"status" => "Cancelled"
+			), $params["AdminUser"] );
+		} else {
+			$error = $e->getMessage();
+		}
+	} catch ( Exception $e ) {
+		$error = $e->getMessage();
+	}
 	$values["error"] = $error;
-	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $response, $error );
+	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $domain_info, $error );
 	return $values;
+}
+
+function domreg_SyncManual( $params ) {
+	$domain = $params["sld"] . "." . $params["tld"];
+	$values = domreg_Sync( $params );
+	$time_grace = intval( $GLOBALS["CONFIG"]["OrderDaysGrace"] ) * 86400;
+	$sync_data = array(
+		"domainid" => $params["domainid"],
+		"regdate" => date( "Ymd", strtotime( $values["registrationdate"] ) ),
+		"expirydate" => date( "Ymd", strtotime( $values["expirydate"] ) ),
+		"nextduedate" => date( "Ymd", strtotime( $values["expirydate"] ) - $time_grace ),
+	);
+	if ( $values["active"] ) {
+		$sync_data["status"] = "active";
+	}
+	$result = localAPI( "updateclientdomain", $sync_data, $params["AdminUser"] );
+	logModuleCall( WHMCS_MODULE, __FUNCTION__, $params, $result, $values["error"] );
+	return array(
+		"message" => "(Warning) You must refresh page to see the changes"
+	);
 }
