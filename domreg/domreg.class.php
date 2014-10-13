@@ -538,25 +538,23 @@ class Domreg {
 
 	// Logically resolve correct registrant based off:
 	//  * Existence of RN in Domreg
-	//  * Database RN
-	//  * Domain RN
+	//  * RN associated with a WHMCS account
+	//  * RN associated with a domain
 	//
-	// Creates new registrant in case it doesn't exist.
+	// Creates new registrant in case it wasn't found
 	// Always returns some registrant object.
 	public function requireRegistrant( $client_id, $domain = null ) {
 		if ( $domain ) {
 			try {
 				$domain_info = $this->api->getDomainInfo( $domain );
-			} catch ( DomregAPIExecutorException $e ) {
-				logModuleCall( WHMCS_MODULE, __FUNCTION__, $client_id, $domain, $e );
-			}
+			} catch ( DomregAPIExecutorException $e ) {}
 		}
 		if ( ! $domain_info ) {
 			$registrant_id = $this->registrants->getRegistrantId( $client_id );
 			if ( ! $registrant_id ) {
 				$registrant = DomregRegistrant::createFromWHMCSParams( $this->params );
-				$registrant_id = $this->api->createRegistrant( $registrant );
-				$this->registrants->save( $client_id, $registrant_id );
+				$registrant["id"] = $this->api->createRegistrant( $registrant );
+				$this->registrants->setRegistrantId( $client_id, $registrant["id"] );
 			} else {
 				$registrant = $this->api->getRegistrant( $registrant_id );
 			}
@@ -564,9 +562,17 @@ class Domreg {
 			$registrant = $domain_info["registrant"];
 			$registrant_id = $this->registrants->getRegistrantId( $client_id );
 			if ( ! $registrant_id ) {
-				$this->registrants->save( $client_id, $registrant["id"] );
+				$this->registrants->setRegistrantId( $client_id, $registrant["id"] );
 			}
 		}
+		logModuleCall( WHMCS_MODULE, __FUNCTION__, array(
+			"client_id" => $client_id,
+			"domain" => $domain,
+		), array(
+			"domain_info" => $domain_info,
+			"registrant_id" => $registrant_id,
+			"registrant" => $registrant,
+		));
 		return $registrant;
 	}
 

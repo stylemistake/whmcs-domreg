@@ -49,13 +49,19 @@ function hook_domreg_CustomFields( $data ) {
 	// Set up additional fields
 	try {
 		$domreg = Domreg::getInstance();
-		$registrant = $domreg->api->getRegistrantByDomain( $domain );
-		$fields["domain_rn"]["value"] = $registrant["id"];
-		$fields["client_rn"]["value"] = $domreg->registrants->getRegistrantId( $client_id );
-	} catch ( DomregAPIExecutorException $e ) {
-		$fields["domain_rn"]["hint"] = "Response from Domreg: " . $e->getMessage();
-	} catch ( DomregRegistrantsTableException $e ) {
-		$fields["client_rn"]["hint"] = "Error quering database: " . $e->getMessage();
+		try {
+			$registrant = $domreg->api->getRegistrantByDomain( $domain );
+			$fields["domain_rn"]["value"] = $registrant["id"];
+		} catch ( DomregAPIExecutorException $e ) {
+			$fields["domain_rn"]["hint"] = "Response from Domreg: " . $e->getMessage();
+		}
+		try {
+			$fields["client_rn"]["value"] = $domreg->registrants->getRegistrantId( $client_id );
+		} catch ( DomregAPIExecutorException $e ) {
+			$fields["client_rn"]["hint"] = "Error quering database: " . $e->getMessage();
+		}
+	} catch ( Exception $e ) {
+		$fields["domain_rn"]["hint"] = "Fatal: " . $e->getMessage();
 	}
 	return domreg_createFieldList( $fields );
 }
