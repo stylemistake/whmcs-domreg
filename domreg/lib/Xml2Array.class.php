@@ -3,17 +3,17 @@ if (version_compare(PHP_VERSION,'5','>=')) require_once('domxml-php4-to-php5.php
 
 class xml2array
 {
-	
+
     var $data = array();
     var $xml = null;
-    
+
     function xml2array(){
     	/**
 	    *    constructor
 	    */
-    
+
     }
-    
+
     function SetInput( $xml )
     {
         // check for file
@@ -61,13 +61,13 @@ class xml2array
                 {
                     $subnode = false;
                     $prefix = ( $child->prefix() ) ? $child->prefix().':' : '';
-                    
+
                     // try to check for multisubnodes
                     foreach ($childs as $testnode)
                       if ( is_object($testnode) )
                         if ($child->node_name() == $testnode->node_name() && $child != $testnode)
                             $subnode = true;
-                            
+
                     if ( is_array($result[ $prefix.$child->node_name() ]) )
                         $subnode = true;
 
@@ -77,13 +77,13 @@ class xml2array
                         $result[ $prefix.$child->node_name() ]    = $this->_recNode2Array($child);
                 }
             }
-    
+
             if ( !is_array($result) ){
                 // correct encoding from utf-8 to locale
                 // NEEDS to be updated to correct in both ways!
                 $result['#text']    =    html_entity_decode(htmlentities($domnode->get_content(), ENT_COMPAT, 'UTF-8'), ENT_COMPAT,'ISO-8859-15');
             }
-    
+
             if ( $domnode->has_attributes() )
                 foreach ( $domnode->attributes() as $attrib )
                 {
@@ -109,13 +109,13 @@ class xml2array
         } else
             return false;
     }
-    
+
     function getEncoding()
     {
         preg_match("~\<\?xml.*encoding=[\"\'](.*)[\"\'].*\?\>~i",$this->xml_string,$matches);
         return ($matches[1])?$matches[1]:"";
     }
-    
+
     function getNamespaces()
     {
         preg_match_all("~[[:space:]]xmlns:([[:alnum:]]*)=[\"\'](.*?)[\"\']~i",$this->xml_string,$matches,PREG_SET_ORDER);

@@ -120,7 +120,7 @@ class DomregRegistrant {
 			$registrant["pc"] = trim( $params["postcode"] );
 		if ( ! empty( $params["companyname"] ) )
 			$registrant["org"] = trim( $params["companyname"] );
-		
+
 		// Additional fields (when editing contact)
 		if ( ! empty( $params["Email"] ) )
 			$registrant["email"] = $params["Email"];
@@ -205,7 +205,7 @@ class DomregAPI {
 	// ----- Private methods -----
 
 	// Response pass-through with error checking
-	private function checkExecutorResponse( $response ) {
+	public function checkExecutorResponse( $response ) {
 		if ( ! $response ) {
 			throw new DomregAPIExecutorException( $this->executor );
 		}
@@ -213,7 +213,7 @@ class DomregAPI {
 	}
 
 	// Map nameservers to executor format
-	private function nsListToExecutor( $ns ) {
+	public function nsListToExecutor( $ns ) {
 		$ns = array_filter( $ns );
 		foreach ( $ns as $value ) {
 			$domreg_ns[ $value ] = array();
@@ -227,6 +227,10 @@ class DomregAPI {
 	// Logout from EPP (should be called at the end to correctly close session)
 	public function logout() {
 		return $this->executor->EppLogout();
+	}
+
+	public function login() {
+		return $this->executor->EppLogin();
 	}
 
 	// Get registrant contact
@@ -249,8 +253,22 @@ class DomregAPI {
 
 	// Create registrant contact
 	public function createRegistrant( $registrant ) {
+		$registrant["role"] = "registrant";
 		$id = $this->executor->EppContactCreate( $registrant );
 		return $this->checkExecutorResponse( $id );
+	}
+
+	// Create CN contact
+	public function createContact( $contact ) {
+		$registrant["role"] = "tech";
+		$id = $this->executor->EppContactCreate( $contact );
+		return $this->checkExecutorResponse( $id );
+	}
+
+	// Checks if domain is available
+	public function checkDomain( $domain ) {
+		$response = $this->executor->EppDomainCheck( $domain );
+		return $this->checkExecutorResponse( $response );
 	}
 
 	// Register a new domain
@@ -459,7 +477,7 @@ class DomregAPI {
 	// 	}
 	// 	return $this->response_ok();
 	// }
-	
+
 }
 
 

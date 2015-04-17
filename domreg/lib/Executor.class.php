@@ -571,7 +571,7 @@ class Executor {
 			$this->MakeError('No technical contact supplied!');
 			return false;
 		}
-		
+
 		if (!isset($data['trType']) || empty($data['trType'])){
 			$this->MakeError('No onExpire supplied!');
 			return false;
@@ -646,12 +646,52 @@ class Executor {
 		return $r;
 	}
 
+	function EppDomainRenew($domain, $curExpDate, $period=1) {
+		if (empty($domain)){
+			$this->MakeError('No domain name');
+			return false;
+		}
+		if (empty($curExpDate)){
+			$this->MakeError('No expiration date');
+			return false;
+		}
+		$cmd="
+		<epp xmlns=\"urn:ietf:params:xml:ns:epp-1.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+		<command>
+		<renew>
+			<domain:renew xmlns:domain=\"http://www.domreg.lt/epp/xml/domreg-domain-1.0\">
+				<domain:name>$domain</domain:name>
+				<domain:curExpDate>$curExpDate</domain:curExpDate>
+				<domain:period unit=\"y\">$period</domain:period>
+			";
+			$cmd .="</domain:renew>
+		</renew>
+		<clTRID>$this->TransId</clTRID>
+		</command>
+		</epp>
+		";
+		if (!$this->EppIsLoggedIn()){
+			if (!$this->EppLogin()) return false;
+		}
+		$res = $this->epp->sendFrame($cmd);
+		$Response = $this->GetResponse();
+		$RCode = $this->GetCode($Response);
+		$RMsg = $this->GetMsg($Response);
+		if ($this->debug) echo "EppDomainRenew: $RCode -> $RMsg\n\n";
+		$this->errorMsg = $RMsg;
+		if ($RCode>=2000 || $RCode<1000){
+			$this->error=true;
+			return false;
+		}
+		$this->data = $Response['resData']['domain:renData']['domain:exDate'];
+		return true;
+	}
+
 	function EppDomainUpdate($domain="", $add=array(), $rem=array(), $chg=array()){
 		if (empty($domain)){
 			$this->MakeError('No domain name');
 			return false;
 		}
-
 
 		if (!$this->EppIsLoggedIn()){
 			if (!$this->EppLogin()) return false;
