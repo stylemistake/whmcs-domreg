@@ -155,7 +155,7 @@ function domreg_RenewDomain( $params ) {
 	$regperiod = $params["regperiod"];
 	try {
 		$domreg = new Domreg( $params );
-		$response = $domreg->api->renewDomain( $domain );
+		$response = $domreg->api->renewDomain( $domain, $regperiod );
 	} catch ( Exception $e ) {
 		$error = $e->getMessage();
 	}

@@ -309,11 +309,14 @@ class DomregAPI {
 	}
 
 	// Renew domain (sets renew flag, doesn't actually renew anything)
-	public function renewDomain( $domain ) {
-		$response = $this->executor->EppDomainUpdate( $domain, array(), array(), array(
-			"onExpire" => "renew"
-		));
-		return $this->checkExecutorResponse( $response );
+	public function renewDomain($domain, $regperiod = 1) {
+		$res = $domreg->api->executor->EppDomainInfo($domain);
+		if (!$domreg->api->checkExecutorResponse($res)) {
+			return $res;
+		}
+		$ex_date = $res['domain:infData']['domain:exDate']['#text'];
+		$res = $this->executor->EppDomainDelete($domain, $ex_date, $regperiod);
+		return $this->checkExecutorResponse($res);
 	}
 
 	// Delete domain
