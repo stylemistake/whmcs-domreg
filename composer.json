@@ -1,0 +1,13 @@
+{
+    "name": "stylemistake/whmcs-domreg",
+    "type": "project",
+    "require": {},
+    "autoload": {
+        "files": [
+          "Epp/functions.php"
+        ],
+        "psr-4": {
+            "Domreg\\": "./"
+        }
+    }
+}
