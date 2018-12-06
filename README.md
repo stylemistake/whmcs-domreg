@@ -36,6 +36,7 @@ group - a group with default nameservers for your hosting. Then, enter this
 group's **name** into configuration field. After doing that, new domain entries
 will have only 1 group entry instead of N nameserver entries.
 
+In WHMCS client must have custom field "Company ID" which sends as orgcode.
 
 ## Community
 
@@ -52,7 +53,7 @@ Our supporters:
 
 * [happyhosting.lt]
 * [sprendimumedija.lt]
-
+* [bacloud.com]
 
 ## License
 

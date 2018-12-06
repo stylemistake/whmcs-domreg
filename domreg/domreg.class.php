@@ -1,5 +1,7 @@
 <?php
 
+use WHMCS\Database\Capsule;
+
 // --------------------------------------------------------
 //  DomregRegistrantsTable
 //  Local registrants database
@@ -142,6 +144,18 @@ class DomregRegistrant {
 
         if (!empty($params['companyname'])) {
             $registrant['org'] = trim($params['companyname']);
+
+            $fieldId = Capsule::table('tblcustomfields')
+                                ->where('fieldname', '=', 'Company ID')
+                                ->where('type',      '=', 'client')
+                                ->pluck('id');
+
+            $companyId = Capsule::table('tblcustomfieldsvalues')
+                                    ->where('fieldid', '=', $fieldId)
+                                    ->where('relid',   '=', $params['userid'])
+                                    ->pluck('value');
+
+            $registrant['orgcode'] = $companyId;
         }
 
         // Additional fields (when editing contact)

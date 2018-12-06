@@ -253,6 +253,7 @@ class Executor {
 			"cc"     => $contact["contact:postalInfo"]["contact:addr"]["contact:cc"]["#text"],
 			"voice"  => $contact["contact:voice"]["#text"],
 			"email"  => $contact["contact:email"]["#text"],
+			"orgcode"=> $contact["contact:orgcode"]["#text"],
 			"role"   => $contact["contact:role"]["#text"],
 			"date_created" => $contact["contact:crDate"]["#text"],
 			"date_updated" => $contact["contact:upDate"]["#text"],
@@ -284,8 +285,9 @@ class Executor {
 							</contact:postalInfo>
 							<contact:voice>{$Cdata['voice']}</contact:voice>";
 							if (isset($Cdata['fax'])) $cmd .= "\t\t\t\t\t\t<contact:fax>{$Cdata['fax']}</contact:fax>";
-							$cmd .= "\t\t\t\t\t\t<contact:email>{$Cdata['email']}</contact:email>
-							<contact:role>{$Cdata['role']}</contact:role>
+							$cmd .= "\t\t\t\t\t\t<contact:email>{$Cdata['email']}</contact:email>";
+							if (isset($Cdata['orgcode'])) $cmd .= "\t\t\t\t\t\t\t\t<contact:orgcode>{$Cdata['orgcode']}</contact:orgcode>";
+							$cmd .= "<contact:role>{$Cdata['role']}</contact:role>
 						</contact:create>
 					</create>
 					<clTRID>$this->TransId</clTRID>
@@ -367,6 +369,7 @@ class Executor {
 								if (isset($Cdata['voice'])) $cmd .= "<contact:voice>{$Cdata['voice']}</contact:voice>";
 								if (isset($Cdata['fax'])) $cmd .= "\t\t\t\t\t\t<contact:fax>{$Cdata['fax']}</contact:fax>";
 								if (isset($Cdata['email'])) $cmd .= "\t\t\t\t\t\t<contact:email>{$Cdata['email']}</contact:email>";
+								if (isset($Cdata['orgcode'])) $cmd .= "<contact:orgcode>{$Cdata['orgcode']}</contact:orgcode>";
 							$cmd .= "</contact:chg>
 						</contact:update>
 					</update>
