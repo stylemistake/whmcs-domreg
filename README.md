@@ -1,8 +1,6 @@
 # WHMCS registrar module for domreg.lt
 
-## About
-
-This is the WHMCS domain registrar module which handles .LT domains (lithuanian
+> A WHMCS domain registrar module which handles .LT domains (lithuanian
 TLD). Module is dedicated to registrar [www.domreg.lt](http://www.domreg.lt).
 
 
@@ -154,7 +152,5 @@ GNU General Public License for more details.
 
 
 ## Contacts
-
-Aleksej Komarov
 
 Email: stylemistake@gmail.com
