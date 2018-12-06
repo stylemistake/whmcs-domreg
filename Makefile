@@ -1,4 +1,6 @@
 # Makefile
+# Copyright (c) 2018 Aleksej Komarov
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 APP_NAME := domreg
 SHELL := /bin/bash

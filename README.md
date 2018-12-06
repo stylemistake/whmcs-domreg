@@ -130,14 +130,27 @@ Our supporters:
 
 ## License
 
-Source code is published under GPLv2 license.
+Copyright (c) 2018 Aleksej Komarov
 
-You are free to use and run this module as part of your WHMCS website, with
-no extra actions required, unless you make changes to source code.
+Source code is provided under GPLv2 license.
 
-If you make changes to source code, it is your duty to provide these changes
-back to the author. Community will appreciate your effort, and will ensure
-that this package is maintained over long time.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version.
+
+You are free to use and run this module as part of your WHMCS website,
+with no extra actions required, unless you make changes to source code
+as stated above.
+
+It is your duty to provide these changes back to the author. Community
+will appreciate your effort, and will ensure that this package is
+maintained over long time.
+
+This program is distributed in the hope that it will be useful, but
+**WITHOUT ANY WARRANTY**; without even the implied warranty of
+**MERCHANTABILITY** or **FITNESS FOR A PARTICULAR PURPOSE**. See the
+GNU General Public License for more details.
 
 
 ## Contacts

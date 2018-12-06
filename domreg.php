@@ -1,4 +1,8 @@
 <?php
+/**
+ * Copyright (c) 2018 Aleksej Komarov
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 
 use WHMCS\Domains\DomainLookup\ResultsList;
 use WHMCS\Domains\DomainLookup\SearchResult;
