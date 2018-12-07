@@ -75,3 +75,4 @@ Aleksej Komarov <[stylemistake@gmail.com]>
 [sprendimumedija.lt]: http://sprendimumedija.lt/
 [stylemistake@gmail.com]: mailto:stylemistake@gmail.com
 [stylemistake.com]: http://stylemistake.com/
+[bacloud.com]: https://www.bacloud.com/
