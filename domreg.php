@@ -123,6 +123,7 @@ function domreg_CheckAvailability($params) {
                 : SearchResult::STATUS_REGISTERED);
             $results->append($result);
         }
+        Store::log(__FUNCTION__, $params, $results);
         return $results;
     }
     catch (Exception $e) {
@@ -138,13 +139,15 @@ function domreg_RequestRn($params) {
     try {
         $epp = Store::getEpp();
         $domain = $epp->getDomain($domainName);
-        return [
+        $res = [
             'success' => true,
             'templatefile' => 'requestrn',
             'vars' => [
                 'registrant_id' => $domain->registrant,
             ],
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -159,12 +162,15 @@ function domreg_GetNameservers($params) {
     try {
         $epp = Store::getEpp();
         $domain = $epp->getDomain($domainName);
-        $res = [
-            'success' => true,
-        ];
+        // NOTE: This one adds "1" into the output
+        // $res = [
+        //     'success' => true,
+        // ];
+        $res = [];
         foreach ($domain->ns as $i => $ns) {
             $res['ns' . ($i + 1)] = $ns->host;
         }
+        Store::log(__FUNCTION__, $params, $res);
         return $res;
     }
     catch (Exception $e) {
@@ -185,9 +191,11 @@ function domreg_SaveNameservers($params) {
             $domain->addNs($params['ns' . $i]);
         }
         $epp->updateDomain($domain);
-        return [
+        $res = [
             'success' => true,
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -216,9 +224,11 @@ function domreg_RegisterDomain($params) {
             $domain->addNs($params['ns' . $i]);
         }
         $epp->createDomain($domain);
-        return [
+        $res = [
             'success' => true,
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -246,9 +256,11 @@ function domreg_TransferDomain($params) {
             $domain->addNs($params['ns' . $i]);
         }
         $epp->transferDomain($domain);
-        return [
+        $res = [
             'success' => true,
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -267,9 +279,16 @@ function domreg_RenewDomain($params) {
         if ($domain->isQuarantined()) {
             $domain->period = $period;
             $epp->createDomain($domain);
+            Store::log(__FUNCTION__, $params, [
+                'created' => true,
+                'quarantined' => true,
+            ]);
         }
         else {
             $epp->renewDomain($domain, $period);
+            Store::log(__FUNCTION__, $params, [
+                'renewed' => true,
+            ]);
         }
     }
     catch (Exception $e) {
@@ -285,9 +304,11 @@ function domreg_RequestDelete($params) {
     try {
         $epp = Store::getEpp();
         $epp->deleteDomain($domainName);
-        return [
+        $res = [
             'success' => true,
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -303,8 +324,7 @@ function domreg_GetContactDetails($params) {
         $epp = Store::getEpp();
         $domain = $epp->getDomain($domainName);
         $contact = $epp->getContact($domain->registrant);
-        return [
-            'success' => true,
+        $res = [
             'Registrant' => [
                 'Email' => $contact->email,
                 'Phone Number' => $contact->voice,
@@ -315,6 +335,8 @@ function domreg_GetContactDetails($params) {
                 'Country code' => $contact->cc,
             ],
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -334,9 +356,11 @@ function domreg_SaveContactDetails($params) {
         // Update with new data
         $contact->fromWHMCSParams($params['contactdetails']['Registrant']);
         $epp->saveContact($contact);
-        return [
+        $res = [
             'success' => true,
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -353,9 +377,11 @@ function domreg_RegisterNameserver($params) {
         $domain = $epp->getDomain($domainName);
         $domain->addNs($params['nameserver'], $params['ipaddress']);
         $epp->updateDomain($domain);
-        return [
+        $res = [
             'success' => true,
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -376,9 +402,11 @@ function domreg_DeleteNameserver($params) {
         $domain = $epp->getDomain($domainName);
         $domain->removeNs($params['nameserver']);
         $epp->updateDomain($domain);
-        return [
+        $res = [
             'success' => true,
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -393,12 +421,14 @@ function domreg_TransferSync($params) {
     try {
         $epp = Store::getEpp();
         $domain = $epp->getDomain($domainName);
-        return [
+        $res = [
             'success' => true,
             'active' => $domain->isActive(),
             'registrationdate' => $domain->createdAt->format('Y-m-d'),
             'expirydate' => $domain->expiresAt->format('Y-m-d'),
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     catch (Exception $e) {
         Store::log(__FUNCTION__, $params, null, $e);
@@ -418,12 +448,14 @@ function domreg_Sync($params) {
         });
         // Get domain info
         $domain = $epp->getDomain($domainName);
-        return [
+        $res = [
             'success' => true,
             'active' => $domain->isActive(),
             'registrationdate' => $domain->createdAt->format('Y-m-d'),
             'expirydate' => $domain->expiresAt->format('Y-m-d'),
         ];
+        Store::log(__FUNCTION__, $params, $res);
+        return $res;
     }
     // catch (Epp\EppException $e) {
     //     $e->req->getStatus()
@@ -480,6 +512,7 @@ function domreg_SyncManual($params) {
             header('Location: ' . $_SERVER['HTTP_REFERER']);
             exit;
         }
+        Store::log(__FUNCTION__, $params);
         // Show a message with instructions
         return [
             'success' => true,

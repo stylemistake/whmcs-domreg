@@ -87,10 +87,15 @@ class Connector {
 
     private function debugPrint($msg) {
         static $stdout = null;
-        if (!$stdout) {
-            $stdout = fopen('php://stdout', 'w');
+        if (PHP_SAPI === 'cli' || PHP_SAPI === 'cli-server') {
+            if (!$stdout) {
+                $stdout = fopen('php://stdout', 'w');
+            }
+            fwrite($stdout, $msg . "\n");
         }
-        fwrite($stdout, $msg . "\n");
+        else {
+            \Domreg\Store::log('Domreg_Epp_Connector', null, $msg);
+        }
     }
 
 }

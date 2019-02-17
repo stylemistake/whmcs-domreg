@@ -93,11 +93,16 @@ class Store {
             ->first();
         if ($row) {
             if ($registrantId) {
-                $row->registrant_id = $registrantId;
-                $row->save();
+                $table
+                    ->where('client_id', $clientId)
+                    ->update([
+                        'registrant_id' => $registrantId,
+                    ]);
             }
             else {
-                $row->delete();
+                $table
+                    ->where('client_id', $clientId)
+                    ->delete();
             }
         }
         else {
