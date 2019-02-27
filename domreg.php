@@ -443,9 +443,9 @@ function domreg_Sync($params) {
     try {
         $epp = Store::getEpp();
         // Try polling first
-        $epp->retrieveMessages(function (Epp\Message $msg) {
-            Store::log('message', null, $msg);
-        });
+        // $epp->retrieveMessages(function (Epp\Message $msg) {
+        //     Store::log('message', null, $msg);
+        // });
         // Get domain info
         $domain = $epp->getDomain($domainName);
         $res = [
