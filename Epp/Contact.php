@@ -6,6 +6,8 @@
 
 namespace Domreg\Epp;
 
+use Domreg\Store;
+
 class Contact extends Entity {
 
     public $id;
@@ -13,6 +15,7 @@ class Contact extends Entity {
     // Postal info
     public $name;
     public $org;
+    public $orgcode;
 
     // Postal info -> Address
     public $street;
@@ -44,6 +47,7 @@ class Contact extends Entity {
             'id' => '//contact:id',
             'name' => '//contact:name',
             'org' => '//contact:org',
+            'orgcode' => '//contact:orgcode',
             'street' => '//contact:street',
             'city' => '//contact:city',
             'sp' => '//contact:sp',
@@ -108,6 +112,8 @@ class Contact extends Entity {
         }
         if (!empty($params['companyname'])) {
             $this->org = trim($params['companyname']);
+            // Orgcode (custom field)
+            $this->orgcode = Store::getOrgCodeByUserId($params['userid']);
         }
         // Additional fields (when editing contact)
         if (!empty($params['Email'])) {
@@ -173,6 +179,7 @@ class Contact extends Entity {
                 XMLElement::optional('contact:voice', null, $this->voice),
                 XMLElement::optional('contact:fax', null, $this->fax),
                 XMLElement::optional('contact:email', null, $this->email),
+                XMLElement::optional('contact:orgcode', null, $this->orgcode),
             ]),
             $this->wrapCreate($action, [
                 XMLElement::optional('contact:role', null, $this->role),

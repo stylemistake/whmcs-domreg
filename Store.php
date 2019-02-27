@@ -170,4 +170,43 @@ class Store {
         return $epp->getContact($registrantId);
     }
 
+    /**
+     * Retrieves an orgcode custom field from WHMCS
+     */
+    public static function getOrgCodeByUserId($userId) {
+        static $fieldNames = [
+            'Company ID',
+            'Įmonės kodas',
+        ];
+        if (!$userId) {
+            self::log('getOrgCodeByUserId', [$userId], null, [
+                'warning' => 'User id was not specified.',
+            ]);
+            return null;
+        }
+        // Retrieve custom field id
+        $row = Capsule::table('tblcustomfields')
+            ->whereIn('fieldname', $fieldNames)
+            ->first();
+        if (!$row) {
+            return null;
+        }
+        $fieldId = $row->id;
+        // Retrieve custom field value
+        $row = Capsule::table('tblcustomfieldsvalues')
+            ->where('fieldid', '=', $fieldId)
+            ->where('relid', '=', $userId)
+            ->first();
+        if (!$row) {
+            return null;
+        }
+        $orgCode = $row->value;
+        // Return orgcode
+        self::log('getOrgCodeByUserId', [$userId], [
+            'fieldId' => $fieldId,
+            'orgCode' => $orgCode,
+        ]);
+        return $orgCode;
+    }
+
 }
