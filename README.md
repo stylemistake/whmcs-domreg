@@ -4,7 +4,7 @@
 TLD). Module is dedicated to registrar [www.domreg.lt](http://www.domreg.lt).
 
 
-## Installation
+## 1. Installation
 
 **[Download a release](https://github.com/stylemistake/whmcs-domreg/releases)**.
 
@@ -28,7 +28,7 @@ Create a nameserver group, and write that group name instead.
 After you completed these steps, you should be ready to register domains.
 
 
-## Setup for developers
+## 2. Setup for developers
 
 If you downloaded or cloned this repository directly instead of downloading
 a release, you will need to do one extra step. Run:
@@ -43,7 +43,7 @@ setup autoloading.
 This is the only step necessary before installing the module into WHMCS.
 
 
-## Operation details
+## 3. Implementation details
 
 Domreg API is based on a custom EPP protocol with the following modifications:
 
@@ -56,7 +56,7 @@ This means that some functions of this module are non-standard and
 have custom behaviour.
 
 
-### Registrant objects
+### 3.1. Registrant objects
 
 To maintain consistency with Domreg specification, each WHMCS client is
 connected to a registrant object in Domreg. Connections are stored in
@@ -80,7 +80,7 @@ object. Due to WHMCS complexity, it is impossible for one user to have
 multiple registrant objects (or in other words, different contact details).
 
 
-### Nameserver groups
+### 3.2. Nameserver groups
 
 Module automatically joins nameservers into groups when operating EPP
 protocol. To be able to leverage this feature, make sure you created a
@@ -90,7 +90,7 @@ Module tries to use these groups to compact nameserver information of a
 domain when domain is registered or nameserver information is edited.
 
 
-### Additional fields
+### 3.3. Additional fields
 
 When you manage a domain from admin area, you can see these new fields:
 
@@ -108,7 +108,7 @@ If this field is empty, it will be filled as soon as client registers
 a new domain.
 
 
-## Community
+## 4. Community and support
 
 Domreg module is shared openly with the community because there is a
 demand for modules that support custom EPP implementations. This module
@@ -116,14 +116,19 @@ currently supports only Domreg registrar and it's fitted to our business
 requirements.
 
 We depend on your support for improving this module, so your help is
-appreciated!
+appreciated! Donated money will go towards improvement of this module.
 
 [![donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=FU6CN3MMFV52Q)
 
-Our supporters:
+We also offer paid support for fitting this module onto your WHMCS
+installation and implementing any custom business logic associated with
+it. Email for inquiries: stylemistake@gmail.com.
 
-* [happyhosting.lt](http://happyhosting.lt/)
-* [hoston.lt](http://hoston.lt/)
+Our current supporters:
+
+- [happyhosting.lt](https://happyhosting.lt/)
+- [bacloud.com](https://bacloud.com/)
+- [host365.lt](https://host365.lt/)
 
 
 ## License
