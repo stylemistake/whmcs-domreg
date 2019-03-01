@@ -144,11 +144,8 @@ the Free Software Foundation, either version 2 of the License, or
 
 You are free to use and run this module as part of your WHMCS website,
 with no extra actions required, unless you make changes to source code
-as stated above.
-
-It is your duty to provide these changes back to the author. Community
-will appreciate your effort, and will ensure that this package is
-maintained over long time.
+as stated above. It is your duty to provide these changes back to the
+author.
 
 This program is distributed in the hope that it will be useful, but
 **WITHOUT ANY WARRANTY**; without even the implied warranty of
