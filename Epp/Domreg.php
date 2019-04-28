@@ -245,9 +245,9 @@ class Domreg {
             XMLElement::make('nsgroup:' . $action, [
                 'xmlns:nsgroup' => self::XMLNS_NSGROUP,
             ], [
-                XMLElement::make('name', null, $name),
+                XMLElement::make('nsgroup:name', null, $name),
                 array_map(function ($x) {
-                    return XMLElement::make('ns', null, $x);
+                    return XMLElement::make('nsgroup:ns', null, $x);
                 }, $nsGroup->nameservers),
             ]),
         ]);
@@ -266,7 +266,7 @@ class Domreg {
             XMLElement::make('nsgroup:delete', [
                 'xmlns:nsgroup' => self::XMLNS_NSGROUP,
             ], [
-                XMLElement::make('name', null, $name),
+                XMLElement::make('nsgroup:name', null, $name),
             ]),
         ]);
         $res = $this->epp->send($req)->throwIfError();
