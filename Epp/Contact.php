@@ -161,7 +161,7 @@ class Contact extends Entity {
 
     public function toXMLElement($action) {
         return XMLElement::make('contact:' . $action, [
-            'xmlns:contact' => 'http://www.domreg.lt/epp/xml/domreg-contact-1.0',
+            'xmlns:contact' => 'http://www.domreg.lt/epp/xml/domreg-contact-1.1',
         ], [
             XMLElement::optional('contact:id', null, $this->id),
             $this->wrapUpdate($action, [
@@ -177,7 +177,6 @@ class Contact extends Entity {
                     ]),
                 ]),
                 XMLElement::optional('contact:voice', null, $this->voice),
-                XMLElement::optional('contact:fax', null, $this->fax),
                 XMLElement::optional('contact:email', null, $this->email),
                 XMLElement::optional('contact:orgcode', null, $this->orgcode),
             ]),

@@ -17,6 +17,11 @@ class Domain extends Entity {
     /**
      * @var string
      */
+    public $eppCode;
+
+    /**
+     * @var string
+     */
     public $registrant;
 
     /**

@@ -105,7 +105,7 @@ class Store {
                     ->delete();
             }
         }
-        else {
+        elseif ($registrantId) {
             $table->insert([
                 'client_id' => $clientId,
                 'registrant_id' => $registrantId,
@@ -129,18 +129,19 @@ class Store {
      * @return Domreg\Epp\Contact
      */
     public static function getRegistrant($clientId, $params = null, $domainName = null) {
-        $table = self::getRegistrantsTable();
-        $epp = self::getEpp();
+        $registrantsTable = self::getRegistrantsTable();
+        $eppClient = self::getEpp();
 
         // Get registrant id from database
-        $registrantId = $table
+        $registrantId = $registrantsTable
             ->where('client_id', $clientId)
             ->value('registrant_id');
 
         // If not found
         if (!$registrantId) {
             // Get the domain
-            $domain = $epp->getDomainOrNull($domainName);
+            $domain = $eppClient->getDomainOrNull($domainName);
+            
             // If domain exists
             if ($domain) {
                 // Get id from domain
@@ -151,15 +152,19 @@ class Store {
                 // Make a new registrant object
                 $registrant = Epp\Contact::make()
                     ->fromWHMCSParams($params, 'registrant');
-                $epp->saveContact($registrant);
+
+                $eppClient->saveContact($registrant);
+
                 // Get id from newly created registrant
                 $registrantId = $registrant->id;
             }
+
             // Save registrant id to database
-            $table->insert([
-                'client_id' => $clientId,
+            $registrantsTable->insert([
+                'client_id'     => $clientId,
                 'registrant_id' => $registrantId,
             ]);
+
             // Return registrant object if we already have it
             if (isset($registrant)) {
                 return $registrant;
@@ -167,7 +172,7 @@ class Store {
         }
 
         // Get registrant object from Domreg
-        return $epp->getContact($registrantId);
+        return $eppClient->getContact($registrantId);
     }
 
     /**
@@ -209,4 +214,45 @@ class Store {
         return $orgCode;
     }
 
+    public static function convertDomregStatusToWhmcsStatus($domregStatus)
+    {
+        switch ($domregStatus) {
+            case 'inactive':
+                # Domain has no nameservers set and therefore is not reachable
+                $whmcsStatus = 'Pending';
+                break;
+
+            case 'serverHold':
+                # Domain is inactive and has to be paid for to become active. (Late payment)
+                $whmcsStatus = 'Redemption Period (Expired)';
+                break;
+
+            case 'pendingCreate':
+                # Domain Registration request is sent but not yet processed
+                $whmcsStatus = 'Pending Registration';
+                break;
+
+            case 'pendingTransfer':
+                # Initiated transfer but not yet reviewed by the other registrar.
+                $whmcsStatus = 'Pending Transfer';
+                break;
+            
+            case 'registered':
+                # Domain is Active
+            case 'pendingRenew': 
+                # Domain is Active, but has to be renewed before it expires.
+            case 'clientAutoRenewProhibited':
+                # Domain Active, but requested not to be renewed.
+            case 'serverTransferProhibited':
+                # Domain Active, but unavailable for transfer for the first and last months of the domain registration.
+            case 'serverUpdateProhibited':
+                # Domain is Active but locked for editing (because of payment or legal issues).
+            case 'clientUpdateProhibited':
+                # Domain is Active and locked for changes except for this status change.
+            default:
+                $whmcsStatus = 'Active';
+        }
+
+        return $whmcsStatus;
+    }
 }

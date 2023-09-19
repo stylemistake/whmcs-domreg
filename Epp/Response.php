@@ -17,11 +17,14 @@ class Response {
         $this->xml = new SimpleXMLElement($frame);
         $this->xml->registerXPathNamespace('epp', 'urn:ietf:params:xml:ns:epp-1.0');
         $this->xml->registerXPathNamespace('secDNS', 'urn:ietf:params:xml:ns:secDNS-1.1');
-        $this->xml->registerXPathNamespace('domain', 'http://www.domreg.lt/epp/xml/domreg-domain-1.0');
-        $this->xml->registerXPathNamespace('contact', 'http://www.domreg.lt/epp/xml/domreg-contact-1.0');
+        $this->xml->registerXPathNamespace('domain', 'http://www.domreg.lt/epp/xml/domreg-domain-1.2');
+        $this->xml->registerXPathNamespace('contact', 'http://www.domreg.lt/epp/xml/domreg-contact-1.1');
         $this->xml->registerXPathNamespace('nsgroup', 'http://www.domreg.lt/epp/xml/domreg-nsgroup-1.0');
         $this->xml->registerXPathNamespace('event', 'http://www.domreg.lt/epp/xml/domreg-event-1.0');
-        $this->xml->registerXPathNamespace('permit', 'http://www.domreg.lt/epp/xml/domreg-permit-1.0');
+        $this->xml->registerXPathNamespace('permit', 'http://www.domreg.lt/epp/xml/domreg-permit-1.1');
+        $this->xml->registerXPathNamespace('permit', 'http://www.domreg.lt/epp/xml/domreg-rlock-1.1');
+        $this->xml->registerXPathNamespace('permit', 'http://www.domreg.lt/epp/xml/authInfo-1.1');
+
         $this->req = $req;
     }
 
