@@ -18,6 +18,7 @@ class Message extends Entity {
      */
     public $queuedAt;
     public $resCode;
+    public $message;
 
     public $obType;
     public $object;
@@ -31,6 +32,7 @@ class Message extends Entity {
         $this->object = xml_query($res->xml, '//event:object');
         $this->notice = xml_query($res->xml, '//event:notice');
         $this->resCode = $res->getCode();
+        $this->message = $res->getMessage();
         return $this;
     }
 
