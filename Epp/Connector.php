@@ -47,7 +47,7 @@ class Connector {
         $hdr = fread($this->socket, 4);
         $unpacked = unpack('N', $hdr);
         $frame = fread($this->socket, ($unpacked[1] - 4));
-        $this->debugPrint('[<=]: ' . $frame);
+        // $this->debugPrint(null, $frame);
         return $frame;
     }
 
@@ -59,7 +59,9 @@ class Connector {
      */
     public function send($req) {
         $this->sendFrame($req->asXML());
-        return new Response($this->recvFrame(), $req);
+        $rpFrame = $this->recvFrame();
+        // $this->debugPrint($req->asXML(), $rpFrame);
+        return new Response($rpFrame, $req);
     }
 
     /**
@@ -72,7 +74,7 @@ class Connector {
         if ($frame instanceof Request || $frame instanceof SimpleXMLElement) {
             $frame = $frame->asXML();
         }
-        $this->debugPrint('[=>]: ' . $frame);
+        // $this->debugPrint($frame, null);
         return @fwrite($this->socket, pack('N', (strlen($frame)+4)) . $frame);
     }
 
@@ -85,16 +87,17 @@ class Connector {
         return @fclose($this->socket);
     }
 
-    private function debugPrint($msg) {
+    private function debugPrint($rqmsg, $rpmsg) {
         static $stdout = null;
         if (PHP_SAPI === 'cli' || PHP_SAPI === 'cli-server') {
             if (!$stdout) {
                 $stdout = fopen('php://stdout', 'w');
             }
-            fwrite($stdout, $msg . "\n");
+            fwrite($stdout, $rqmsg . "\n");
+            fwrite($stdout, $rpmsg . "\n");
         }
         else {
-            \Domreg\Store::log('Domreg_Epp_Connector', null, $msg);
+            \Domreg\Store::log('Domreg_Epp_Connector', $rqmsg, $rpmsg);
         }
     }
 

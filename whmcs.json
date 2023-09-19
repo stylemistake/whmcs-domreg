@@ -1,0 +1,38 @@
+{
+  "schema": "1.0",
+  "type": "whmcs-registrars",
+  "name": "dmreg",
+  "license": "proprietary",
+  "category": "domains",
+  "description": {
+    "name": "Domreg",
+    "tagline": "LT domain provider.",
+    "long": "Module used to register and manage .LT domain names",
+    "features": [
+      "Domain registration",
+      "Domain renewal",
+      "Domain transfer",
+      "Domain deletion",
+      "Domain nameservers management",
+      "Domreg contact creation by whmcs client details.",
+      "Domreg contact details management"
+    ]
+  },
+  "logo": {
+    "filename": "logo.png"
+  },
+  "support": {
+    "homepage": "https:\/\/github.com\/almanskis\/whmcs-registrar-domreg",
+    "email": "almantasgirskis@gmail.com"
+  },
+  "authors": [
+    {
+      "name": "Aleksej Komarov",
+      "homepage": "https:\/\/github.com\/stylemistake\/whmcs-domreg"
+    },
+    {
+      "name": "Almantas Girskis",
+      "homepage": "https:\/\/github.com\/almanskis\/whmcs-registrar-domreg"
+    }
+  ]
+}

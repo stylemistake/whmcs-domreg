@@ -11,17 +11,20 @@ class Request {
     public $xml;
     public $txnId;
 
-    public static function make($action, $attrs = null, $children = null) {
-        return new self(XMLElement::make($action, $attrs, $children));
+    public static function make($action, $attrs = null, $children = null, $XmlExtension = null) {
+        $xmlAction = XMLElement::make($action, $attrs, $children);
+
+        return new self($xmlAction, $XmlExtension);
     }
 
-    public function __construct($payload) {
+    public function __construct($payload, $extension) {
         $this->txnId = uniqid();
         $this->xml = XMLElement::make('epp', [
             'xmlns' => 'urn:ietf:params:xml:ns:epp-1.0',
         ], [
             XMLElement::make('command', null, [
                 $payload,
+                $extension,
                 XMLElement::make('clTRID', null, $this->txnId),
             ]),
         ]);

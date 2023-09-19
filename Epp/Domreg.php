@@ -10,11 +10,13 @@ class Domreg {
 
     const XMLNS_EPP = 'urn:ietf:params:xml:ns:epp-1.0';
     const XMLNS_SECDNS = 'urn:ietf:params:xml:ns:secDNS-1.1';
-    const XMLNS_DOMAIN = 'http://www.domreg.lt/epp/xml/domreg-domain-1.0';
-    const XMLNS_CONTACT = 'http://www.domreg.lt/epp/xml/domreg-contact-1.0';
+    const XMLNS_DOMAIN = 'http://www.domreg.lt/epp/xml/domreg-domain-1.2';
+    const XMLNS_CONTACT = 'http://www.domreg.lt/epp/xml/domreg-contact-1.1';
     const XMLNS_NSGROUP = 'http://www.domreg.lt/epp/xml/domreg-nsgroup-1.0';
     const XMLNS_EVENT = 'http://www.domreg.lt/epp/xml/domreg-event-1.0';
-    const XMLNS_PERMIT = 'http://www.domreg.lt/epp/xml/domreg-permit-1.0';
+    const XMLNS_PERMIT = 'http://www.domreg.lt/epp/xml/domreg-permit-1.1';
+    const XMLNS_RLOCK = 'http://www.domreg.lt/epp/xml/domreg-rlock-1.0';
+    const XMLNS_AUTH_INFO = 'http://www.domreg.lt/epp/xml/authInfo-1.0';
 
     private $epp;
     private $loggedIn = false;
@@ -76,12 +78,14 @@ class Domreg {
             ]),
             XMLElement::make('svcs', null, [
                 XMLElement::make('objURI', null, self::XMLNS_EPP),
-                XMLElement::make('objURI', null, self::XMLNS_SECDNS),
                 XMLElement::make('objURI', null, self::XMLNS_DOMAIN),
                 XMLElement::make('objURI', null, self::XMLNS_CONTACT),
                 XMLElement::make('objURI', null, self::XMLNS_NSGROUP),
                 XMLElement::make('objURI', null, self::XMLNS_EVENT),
                 XMLElement::make('objURI', null, self::XMLNS_PERMIT),
+                XMLElement::make('objURI', null, self::XMLNS_RLOCK),
+                XMLElement::make('objURI', null, self::XMLNS_SECDNS),
+                XMLElement::make('objURI', null, self::XMLNS_AUTH_INFO),
             ]),
         ]);
         $res = $this->epp->send($req)->throwIfError();
@@ -111,9 +115,12 @@ class Domreg {
      */
     public function getContact($id) {
         $contact = new Contact([ 'id' => $id ]);
-        $req = Request::make('info', null, $contact->toXMLElement('info'));
-        $res = $this->epp->send($req)->throwIfError();
-        $contact->fromResponse($res);
+
+        $request = Request::make('info', null, $contact->toXMLElement('info'));
+        $response = $this->epp->send($request)->throwIfError();
+
+        $contact->fromResponse($response);
+
         return $contact;
     }
 
@@ -124,11 +131,14 @@ class Domreg {
      * @return Contact
      */
     public function saveContact(Contact $contact) {
-        $req = $contact->id
+        $request = $contact->id
             ? Request::make('update', null, $contact->toXMLElement('update'))
             : Request::make('create', null, $contact->toXMLElement('create'));
-        $res = $this->epp->send($req)->throwIfError();
-        return $contact->fromResponse($res);
+            
+        $response = $this->epp->send($request)->throwIfError();
+
+        // return Message::make()->fromResponse($response);
+        return $contact->fromResponse($response);
     }
 
     /**
@@ -315,27 +325,51 @@ class Domreg {
      * @param  string $name
      * @return Domain
      */
-    public function getDomain($name) {
-        $req = Request::make('info', null, [
-            XMLElement::make('domain:info', [
-                'xmlns:domain' => self::XMLNS_DOMAIN,
-            ], [
-                XMLElement::make('domain:name', null, $name),
-            ]),
-        ]);
+    public function getDomain($domainName, $authInfo = null) {
+        $xmlDomainInfo = XMLElement::make(
+            'domain:info',
+            ['xmlns:domain' => self::XMLNS_DOMAIN],
+            [XMLElement::make('domain:name', null, $domainName)]
+        );
+
+        $xmlExtension = null;
+        if ($authInfo === 'request' || $authInfo === 'cancel') {
+            $xmlExtension = XMLElement::make(
+                'extension', 
+                null,
+                [
+                    XMLElement::make(
+                        'authInfo:info',
+                        ['xmlns:authInfo' => self::XMLNS_AUTH_INFO],
+                        XMLElement::make("authInfo:{$authInfo}")
+                    )
+                ]
+            );
+        }
+
+        // Make a request
+        $req = Request::make(
+            'info',
+            null,
+            [$xmlDomainInfo],
+            $xmlExtension
+        );
+
         $res = $this->epp->send($req)->throwIfError();
+
         $xml = $res->getData();
 
-        $domain = new Domain();
-        $domain->name = xml_query($xml, '//domain:name');
-        $domain->roid = xml_query($xml, '//domain:roid');
-        $domain->onExpire = xml_query($xml, '//domain:onExpire');
-        $domain->status = xml_query($xml, '//domain:status/@s');
+        $domain             = new Domain();
+        $domain->name       = xml_query($xml, '//domain:name');
+        $domain->roid       = xml_query($xml, '//domain:roid');
+        $domain->onExpire   = xml_query($xml, '//domain:onExpire');
+        $domain->status     = xml_query($xml, '//domain:status/@s');
         $domain->registrant = xml_query($xml, '//domain:registrant');
-        $domain->contacts = xml_query_all($xml, '//domain:contact');
-        $domain->createdAt = xml_query_as_datetime($xml, '//domain:crDate');
-        $domain->updatedAt = xml_query_as_datetime($xml, '//domain:upDate');
-        $domain->expiresAt = xml_query_as_datetime($xml, '//domain:exDate');
+        $domain->contacts   = xml_query_all($xml, '//domain:contact');
+        $domain->createdAt  = xml_query_as_datetime($xml, '//domain:crDate');
+        $domain->updatedAt  = xml_query_as_datetime($xml, '//domain:upDate');
+        $domain->expiresAt  = xml_query_as_datetime($xml, '//domain:exDate');
+        $domain->eppCode    = xml_query($xml, '//domain:pw');
 
         $nsGroupNames = xml_query_all($xml, '//domain:hostGroup');
         foreach ($nsGroupNames as $nsGroupName) {
@@ -364,10 +398,10 @@ class Domreg {
         if (!$name) {
             return null;
         }
+
         try {
             return $this->getDomain($name);
-        }
-        catch (EppException $e) {
+        } catch (EppException $e) {
             return null;
         }
     }
@@ -399,14 +433,15 @@ class Domreg {
             ]),
         ]);
         // Send a request
-        $res = $this->epp->send($req)->throwIfError();
-        $xml = $res->getData();
+        $response = $this->epp->send($req)->throwIfError();
+        $xml = $response->getData();
         $domain->name = xml_query($xml, '//domain:name');
         $domain->createdAt = xml_query_as_datetime($xml, '//domain:crDate');
         $domain->expiresAt = xml_query_as_datetime($xml, '//domain:exDate');
-        return $domain
-            ->beginChanges()
-            ->expand();
+
+        $domain->beginChanges()->expand();
+
+        return Message::make()->fromResponse($response);
     }
 
     /**
@@ -449,12 +484,14 @@ class Domreg {
             ]),
         ]);
         // Send a request
-        $res = $this->epp->send($req)->throwIfError();
-        $xml = $res->getData();
+        $response = $this->epp->send($req)->throwIfError();
+        $xml = $response->getData();
+
         $domain->createdAt = xml_query_as_datetime($xml, '//domain:crDate');
         $domain->expiresAt = xml_query_as_datetime($xml, '//domain:exDate');
         $domain->beginChanges()->expand();
-        return $this;
+
+        return Message::make()->fromResponse($response);
     }
 
     /**
@@ -469,6 +506,7 @@ class Domreg {
         $name = $domain instanceof Domain
             ? $domain->name
             : $domain;
+
         $req = Request::make('delete', null, [
             XMLElement::make('domain:delete', [
                 'xmlns:domain' => self::XMLNS_DOMAIN,
@@ -476,8 +514,10 @@ class Domreg {
                 XMLElement::make('domain:name', null, $name),
             ]),
         ]);
-        $res = $this->epp->send($req)->throwIfError();
-        return $this;
+
+        $response = $this->epp->send($req)->throwIfError();
+
+        return Message::make()->fromResponse($response);
     }
 
     /**
@@ -488,26 +528,43 @@ class Domreg {
      * @return self
      */
     public function transferDomain(Domain $domain, $trType = 'transfer') {
+        $xmlDomainName = XMLElement::make('domain:name', null, $domain->name);
+        $xmlTrType     = XMLElement::make('domain:trType', null, $trType);
+        $xmlOnExpire   = XMLElement::make('domain:onExpire', null, $domain->onExpire);
+
+        $xmlDomainPw = XMLElement::make('domain:pw', null, $domain->eppCode);
+        $xmlAuthInfo = XMLElement::optional('domain:authInfo', null, $xmlDomainPw);
+
+        $xmlDomainNs = XMLElement::optional('domain:ns', null, array_map(function ($entity) {
+                return $entity->toXMLElement();
+            }, $domain->ns));
+
+        $xmlRegistrant = XMLElement::make('domain:registrant', null, $domain->registrant);
+
+        $xmlContacts = array_map(function ($contact) {
+            return XMLElement::make('domain:contact', null, $contact);
+        }, $domain->contacts);
+
+
         $req = Request::make('transfer', [
             'op' => 'request',
         ], [
             XMLElement::make('domain:transfer', [
                 'xmlns:domain' => self::XMLNS_DOMAIN,
             ], [
-                XMLElement::make('domain:name', null, $domain->name),
-                XMLElement::make('domain:trType', null, $trType),
-                XMLElement::optional('domain:onExpire', null, $domain->onExpire),
-                XMLElement::optional('domain:ns', null, array_map(function ($entity) {
-                    return $entity->toXMLElement();
-                }, $domain->ns)),
-                XMLElement::make('domain:registrant', null, $domain->registrant),
-                array_map(function ($contact) {
-                    return XMLElement::make('domain:contact', null, $contact);
-                }, $domain->contacts),
+                $xmlDomainName,
+                $xmlTrType,
+                $xmlOnExpire,
+                $xmlAuthInfo,
+                $xmlDomainNs,
+                $xmlRegistrant,
+                $xmlContacts,
             ]),
         ]);
-        $res = $this->epp->send($req)->throwIfError();
-        return $this;
+
+        $response = $this->epp->send($req)->throwIfError();
+
+        return Message::make()->fromResponse($response);
     }
 
     /**
@@ -531,6 +588,7 @@ class Domreg {
         if ($period) {
             $domain->period = $period;
         }
+
         $req = Request::make('renew', null, [
             XMLElement::make('domain:renew', [
                 'xmlns:domain' => self::XMLNS_DOMAIN,
@@ -540,9 +598,11 @@ class Domreg {
                 XMLElement::make('domain:period', [ 'unit' => 'y' ], $domain->period),
             ]),
         ]);
+
         $res = $this->epp->send($req)->throwIfError();
         $xml = $res->getData();
         $domain->expiresAt = xml_query_as_datetime($xml, '//domain:exDate');
+
         return $this;
     }
 
@@ -558,7 +618,9 @@ class Domreg {
             'op' => $op,
             'msgID' => $msgId,
         ]);
+
         $res = $this->epp->send($req)->throwIfError();
+
         return Message::make()->fromResponse($res);
     }
 
@@ -575,10 +637,12 @@ class Domreg {
     public function retrieveMessages(callable $fn) {
         while (true) {
             $msg = $this->poll();
+
             // Quit when queue is empty
             if ($msg->isQueueEmpty()) {
                 return $this;
             }
+
             // Handle the message
             $result = $fn($msg);
             // Send Ack
@@ -589,8 +653,12 @@ class Domreg {
                     return $this;
                 }
             }
+
+            if ($result === false) {
+                return $this;
+            }
         }
+
         return $this;
     }
-
 }
