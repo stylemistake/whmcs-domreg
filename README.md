@@ -111,10 +111,18 @@ a new domain.
 ## 4. Community and support
 
 Domreg module is shared openly with the community because there is a
-demand for modules that support custom EPP implementations. This module supports only Domreg registrar and it's fitted to our business
+demand for modules that support custom EPP implementations. This module
+currently supports only Domreg registrar and it's fitted to our business
 requirements.
 
-If you find any needed improvements for this module feel free to create a pull request or create an issue and I will look at it.
+We depend on your support for improving this module, so your help is
+appreciated! Donated money will go towards improvement of this module.
+
+[![donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=FU6CN3MMFV52Q)
+
+We also offer paid support for fitting this module onto your WHMCS
+installation and implementing any custom business logic associated with
+it. Email for inquiries: stylemistake@gmail.com.
 
 Our current supporters:
 
@@ -126,7 +134,6 @@ Our current supporters:
 ## License
 
 Copyright (c) 2018 Aleksej Komarov
-Copyright (c) 2023 Almantas Girskis
 
 Source code is provided under GPLv2 license.
 
@@ -148,4 +155,4 @@ GNU General Public License for more details.
 
 ## Contacts
 
-Email: almantasgirskis@gmail.com
+Email: stylemistake@gmail.com
